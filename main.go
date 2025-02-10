@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-
 	"github.com/josemontano1996/ai-chatbot-backend/api"
 )
 
