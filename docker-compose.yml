@@ -1,0 +1,13 @@
+services:
+  redis:
+    image: "redis:latest"
+    ports: 
+    - "6379:6379"
+    volumes: 
+    - redis_data:/data
+    environment:
+      - REDIS_PASSWORD=password
+    command:
+      ['redis-server', '--requirepass', 'password', '--maxmemory', '512mb']
+volumes:
+  redis_data:
