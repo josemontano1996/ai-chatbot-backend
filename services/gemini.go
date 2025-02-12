@@ -3,10 +3,14 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
+	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/google/generative-ai-go/genai"
-	"github.com/josemontano1996/ai-chatbot-backend/api/controller"
+	"github.com/josemontano1996/ai-chatbot-backend/sharedtypes"
+
 	"google.golang.org/api/option"
 )
 
@@ -25,6 +29,10 @@ const (
 	FinishReasonOther int8 = 5
 )
 
+const (
+	Gemini15FlashModelName string = "gemini-1.5-flash"
+)
+
 type GeminiService struct {
 	ctx    context.Context
 	client *genai.Client
@@ -32,8 +40,8 @@ type GeminiService struct {
 }
 
 type ChatRequest struct {
-	UserMessage controller.Message
-	History     controller.History
+	UserMessage sharedtypes.Message
+	History     sharedtypes.History
 }
 
 type Prompt struct {
@@ -41,52 +49,66 @@ type Prompt struct {
 }
 
 type AIResponse struct {
-	Message    *controller.Message
+	Message    *sharedtypes.Message
 	TokenCount int32
 }
 
 type AIServiceConfig struct {
-	ModelName         string        `json:"model_name" validate:"required"`
-	SystemInstruction string        `json:"system_instruction" validate:"required"`
-	MaxOutputTokens   int32         `json:"max_output_tokens" validate:"required"`
-	ResponseMIMEType  string        `json:"response_mime_type,omitempty"`
-	ResponseSchema    *genai.Schema `json:"response_schema,omitempty"`
+	ModelName         string `json:"model_name" validate:"required"`
+	SystemInstruction string `json:"system_instruction" validate:"required"`
+	MaxOutputTokens   int32  `json:"max_output_tokens" validate:"required"`
+	// ResponseMIMEType  string        `json:"response_mime_type,omitempty"`
+	// ResponseSchema    *genai.Schema `json:"response_schema,omitempty"`
 }
 
-func NewGeminiService(ctx *context.Context, apiKey string, config *AIServiceConfig) (*GeminiService, error) {
+func NewAIServiceConfig(model string, systemInstruction string, maxOutputTokens int32) *AIServiceConfig {
+	return &AIServiceConfig{
+		ModelName:         model,
+		SystemInstruction: systemInstruction,
+		MaxOutputTokens:   maxOutputTokens,
+	}
+}
 
-	client, err := genai.NewClient(*ctx, option.WithAPIKey(apiKey))
+func NewGeminiService(ctx *gin.Context, apiKey string, config *AIServiceConfig) (*GeminiService, error) {
 
+	client, err := genai.NewClient(ctx, option.WithAPIKey(apiKey))
+	fmt.Println("connected to gemini: ", time.Now())
 	if err != nil {
 		return nil, err
 	}
-
 	model := client.GenerativeModel(config.ModelName)
 
-	model.SystemInstruction.Role = "model"
-	model.SystemInstruction.Parts = append(model.SystemInstruction.Parts, genai.Text(config.SystemInstruction))
+	model.SystemInstruction = &genai.Content{
+		Role:  "bot", // Or "model" depending on your requirements
+		Parts: []genai.Part{genai.Text(config.SystemInstruction)},
+	}
 	model.MaxOutputTokens = &config.MaxOutputTokens
-	model.ResponseMIMEType = config.ResponseMIMEType
-	model.ResponseSchema = config.ResponseSchema
+	// model.ResponseMIMEType = config.ResponseMIMEType
+	// model.ResponseSchema = config.ResponseSchema
 	var candidateNumber int32 = 1
 	model.GenerationConfig.CandidateCount = &candidateNumber
+	fmt.Println("finished setting up model config: ", time.Now())
 
 	return &GeminiService{
-		ctx:    *ctx,
+		ctx:    ctx,
 		client: client,
 		model:  model}, nil
 }
 
-func (ai *GeminiService) Chat(ctx *context.Context, userMessage *string, History *controller.History) (*AIResponse, error) {
+func (ai *GeminiService) Chat(ctx *gin.Context, userMessage *string, History *sharedtypes.History) (*AIResponse, error) {
 	defer ai.client.Close()
+	fmt.Println("started chat: ", time.Now())
+
 	session := ai.model.StartChat()
 	session.History = ai.parseHistory(History)
-	res, err := session.SendMessage(*ctx, genai.Text(*userMessage))
+	fmt.Println("sent message ", time.Now())
+	res, err := session.SendMessage(ctx, genai.Text(*userMessage))
 
 	if err != nil {
 		return nil, err
 	}
-
+	
+	fmt.Println("parsing response: ", time.Now())
 	parsedResponse, err := ai.parseAIRespose(res)
 	if err != nil {
 		return nil, err
@@ -94,7 +116,7 @@ func (ai *GeminiService) Chat(ctx *context.Context, userMessage *string, History
 
 	return parsedResponse, nil
 }
-func (ai *GeminiService) parseHistory(History *controller.History) []*genai.Content {
+func (ai *GeminiService) parseHistory(History *sharedtypes.History) []*genai.Content {
 	formattedHistory := make([]*genai.Content, 0)
 	parsedHistoryElement := &genai.Content{}
 
@@ -122,27 +144,27 @@ func (ai *GeminiService) parseHistory(History *controller.History) []*genai.Cont
 
 func (ai *GeminiService) parseAIRespose(res *genai.GenerateContentResponse) (*AIResponse, error) {
 	if len(res.Candidates) == 0 {
-		candidate := res.Candidates[0]
-		if candidate.FinishReason != 1 {
-			_, err := ai.parseCandidateError(candidate)
-			return &AIResponse{}, err
-		}
-
-		finalMessage := ""
-		if cs := contentString(res.Candidates[0].Content); cs != nil {
-			finalMessage = *cs
-		}
-
-		return &AIResponse{
-			Message: &controller.Message{
-				Message: finalMessage,
-				Type:    -1,
-			},
-			TokenCount: candidate.TokenCount,
-		}, nil
+		return &AIResponse{}, errors.New("no candidates found")
 	}
 
-	return &AIResponse{}, errors.New("no candidates found")
+	candidate := res.Candidates[0]
+	if candidate.FinishReason != 1 {
+		_, err := ai.parseCandidateError(candidate)
+		return &AIResponse{}, err
+	}
+
+	finalMessage := ""
+	if cs := contentString(candidate.Content); cs != nil {
+		finalMessage = *cs
+	}
+
+	return &AIResponse{
+		Message: &sharedtypes.Message{
+			Message: finalMessage,
+			Type:    -1,
+		},
+		TokenCount: candidate.TokenCount,
+	}, nil
 }
 
 // contentString converts genai.Content to a string. If the parts in the input content are of type

@@ -7,6 +7,7 @@ import (
 type Env struct {
 	RedisAddress  string `mapstructure:"REDIS__ADDRESS"`
 	RedisPassword string `mapstructure:"REDIS_PASSWORD"`
+	GeminiApiKey  string `mapstructure:"GEMINI_API_KEY"`
 }
 
 func LoadEnv(path string, fileName string) (env Env, err error) {

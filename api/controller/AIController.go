@@ -2,6 +2,7 @@ package controller
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"time"
 
@@ -9,6 +10,8 @@ import (
 	"github.com/josemontano1996/ai-chatbot-backend/api/ws"
 	"github.com/josemontano1996/ai-chatbot-backend/config"
 	"github.com/josemontano1996/ai-chatbot-backend/repository"
+	"github.com/josemontano1996/ai-chatbot-backend/services"
+	"github.com/josemontano1996/ai-chatbot-backend/sharedtypes"
 )
 
 var userId int64 = 1
@@ -17,24 +20,8 @@ func PostAIController(c *gin.Context) {
 	handleConnections(c) // Upgrade to websocket on POST request
 }
 
-type Message struct {
-	// Greater than 0 represents a message by the user
-	// Less than 0 represents a message by the bot
-	Type    int8   `json:"type"`
-	Message string `json:"message"`
-	// If an output structure is neede we can add it below
-	// OutputStructure string `json:"output_structure"`
-}
-
-// History represents the list of messages in the session
-type History []Message
-
-// This will be stored and retrieved using redis
-// TODO chang map tipe to uuid
-var conversations = make(map[int64][]Message)
-
 func handleConnections(c *gin.Context) {
-	expirationTime := 5 * time.Minute
+	expirationTime := 60 * time.Minute
 
 	client, err := ws.NewWSClient(c, userId, expirationTime)
 
@@ -44,8 +31,9 @@ func handleConnections(c *gin.Context) {
 	}
 
 	defer client.Conn.Close()
+	fmt.Println("ws connectado: ", time.Now())
 
-	envs, err := config.LoadEnv("./", "app")
+	envs, err := config.LoadEnv("./", "prod")
 
 	if err != nil {
 		log.Fatal("fatal error loading env variables: ", err)
@@ -53,7 +41,7 @@ func handleConnections(c *gin.Context) {
 	}
 
 	// TODO: change flow so the history is loaded when connection is stablished
-	// then individual messges are appended to the history 
+	// then individual messges are appended to the history
 	// and individual bot messages are streamed to the client
 	kv := repository.NewRedis(envs.RedisAddress, envs.RedisPassword, 0)
 
@@ -65,16 +53,20 @@ func handleConnections(c *gin.Context) {
 		return
 	}
 
-	log.Println("client connected: ", client)
+	aiConfig := services.NewAIServiceConfig(services.Gemini15FlashModelName, "You are an AI chatbot, help the user with its requests, only output in text format.", 8000)
 
 	for {
-		var msg Message
-		err := client.Conn.ReadJSON(&msg)
+		fmt.Println("inside the lopp: ", time.Now())
+
+		var userMessage sharedtypes.Message
+		fmt.Println("leyendo json de la petiicon ", time.Now())
+
+		err := client.Conn.ReadJSON(&userMessage)
 		if err != nil {
 			log.Println("Error reading json:", err)
 			break
 		}
-		msg.Type = 1
+		userMessage.Type = 1
 
 		// 		El cliente envía el mensaje al servidor.
 
@@ -85,12 +77,14 @@ func handleConnections(c *gin.Context) {
 		// La IA genera una respuesta.
 
 		// El servidor envía la respuesta al cliente y la guarda en Redis.
-		msgJSON, err := json.Marshal(msg)
+		msgJSON, err := json.Marshal(userMessage)
 
 		if err != nil {
 			log.Println("Error marshaling message to JSON:", err)
 			continue
 		}
+
+		fmt.Println("guarndando mensaje usuario en kv: ", time.Now())
 
 		err = kv.RPush(c, "userkey", msgJSON).Err()
 
@@ -98,64 +92,71 @@ func handleConnections(c *gin.Context) {
 			log.Println("Error pushing message to Redis:", err)
 			continue
 		}
+		fmt.Println("cargando historial 1: ", time.Now())
 
-		// Simulate Gemini API response - Replace with actual Gemini API call, now with context
-		botResponse := simulateGeminiAPIResponse(msg.Message, conversations[client.UserId])
+		msgHistory, err := kv.LRange(c, "userkey", 0, -1).Result() // Get the entire list
 
-		responseMessage := Message{Type: -1, Message: botResponse}
+		if err != nil {
+			log.Println("Error getting messages from Redis:", err)
+			continue
+		}
+		fmt.Println("boot gemini service: ", time.Now())
 
-		responseMessageJson, err := json.Marshal(responseMessage)
+		gemini, err := services.NewGeminiService(c, envs.GeminiApiKey, aiConfig)
+
+		if err != nil {
+			// TODO: handle more gracefully
+			log.Fatal("could not create gemini service: ", err)
+			return
+		}
+		fmt.Println("parseando historial: ", time.Now())
+
+		parsedMsgHistory := sharedtypes.NewHistory(msgHistory)
+		response, err := gemini.Chat(c, &userMessage.Message, parsedMsgHistory)
+
+		if err != nil {
+			//TODO: handle more gracefully
+			log.Println("Error getting response from AI:", err)
+			continue
+		}
+
+		//TODO: substract amount of tokens used
+
+		responseMessageJSON, err := json.Marshal(response.Message)
 
 		if err != nil {
 			log.Println("Error Marshaling bot response to JSON", err)
 			continue
 		}
 
-		err = kv.RPush(c, "userkey", responseMessageJson).Err()
+		fmt.Println("guarndando mensaje de bot en kv: ", time.Now())
+		err = kv.RPush(c, "userkey", responseMessageJSON).Err()
 
 		if err != nil {
 			log.Println("Error pushing bot response to Redis:", err)
 			continue
 		}
 
+		fmt.Println("cargando historial 2: ", time.Now())
 		messages, err := kv.LRange(c, "userkey", 0, -1).Result() // Get the entire list
 		if err != nil {
 			log.Println("Error getting messages from Redis:", err)
 			continue
 		}
 
-		var messageHistory []Message
-		for _, message := range messages {
-			var m Message
-			err := json.Unmarshal([]byte(message), &m)
-			if err != nil {
-				log.Println("Error unmarshalling message:", err)
-				continue // Skip the message if unmarshalling fails
-			}
-			messageHistory = append(messageHistory, m)
-		}
+		updatedHistory := sharedtypes.NewHistory(messages)
+		fmt.Println("historial parseado: ", time.Now())
 
-		err = client.Conn.WriteJSON(messageHistory)
+		fmt.Println("enviando respesta a cliente: ", time.Now())
+
+		err = client.Conn.WriteJSON(updatedHistory)
 		if err != nil {
 			log.Println("Error writing json:", err)
+			fmt.Println("break: ", time.Now())
+
 			break
 		}
-	}
-}
+		fmt.Println("final: ", time.Now())
 
-func simulateGeminiAPIResponse(userMessage string, history History) string {
-	//here i have to retrieve the message hisotory from redis
-	context := ""
-	if len(history) > 2 { // Example: Include last 2 messages as context
-		context = "Previous messages: "
-		for i := max(0, len(history)-3); i < len(history)-1; i++ { // Exclude the current user message
-			if history[i].Type > 0 {
-				context += "User: " + history[i].Message + "; "
-			} else if history[i].Type < 0 {
-				context += "Bot: " + history[i].Message + "; "
-			}
-		}
 	}
-
-	return "AI Response: " + context + "You said: " + userMessage + ". This is a simulated response with context."
 }
