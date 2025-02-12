@@ -52,6 +52,9 @@ func handleConnections(c *gin.Context) {
 		return
 	}
 
+	// TODO: change flow so the history is loaded when connection is stablished
+	// then individual messges are appended to the history 
+	// and individual bot messages are streamed to the client
 	kv := repository.NewRedis(envs.RedisAddress, envs.RedisPassword, 0)
 
 	// TODO change the fmt sprint to a string as it will be uuid string when db is up
