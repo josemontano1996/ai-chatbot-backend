@@ -18,7 +18,9 @@ func PostAIController(c *gin.Context) {
 }
 
 type Message struct {
-	Type    string `json:"type"`
+	// Greater than 0 represents a message by the user
+	// Less than 0 represents a message by the bot
+	Type    int8   `json:"type"`
 	Message string `json:"message"`
 	// If an output structure is neede we can add it below
 	// OutputStructure string `json:"output_structure"`
@@ -69,6 +71,7 @@ func handleConnections(c *gin.Context) {
 			log.Println("Error reading json:", err)
 			break
 		}
+		msg.Type = 1
 
 		// 		El cliente envía el mensaje al servidor.
 
@@ -93,12 +96,10 @@ func handleConnections(c *gin.Context) {
 			continue
 		}
 
-		log.Printf("Received message: Type=%s, Content=%s\n", msg.Type, msg.Message)
-
 		// Simulate Gemini API response - Replace with actual Gemini API call, now with context
 		botResponse := simulateGeminiAPIResponse(msg.Message, conversations[client.UserId])
 
-		responseMessage := Message{Type: "bot-message", Message: botResponse}
+		responseMessage := Message{Type: -1, Message: botResponse}
 
 		responseMessageJson, err := json.Marshal(responseMessage)
 
@@ -145,9 +146,9 @@ func simulateGeminiAPIResponse(userMessage string, history History) string {
 	if len(history) > 2 { // Example: Include last 2 messages as context
 		context = "Previous messages: "
 		for i := max(0, len(history)-3); i < len(history)-1; i++ { // Exclude the current user message
-			if history[i].Type == "user-message" {
+			if history[i].Type > 0 {
 				context += "User: " + history[i].Message + "; "
-			} else if history[i].Type == "bot-message" {
+			} else if history[i].Type < 0 {
 				context += "Bot: " + history[i].Message + "; "
 			}
 		}
