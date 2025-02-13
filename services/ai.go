@@ -1,18 +1,14 @@
 package services
 
 import (
-	"github.com/gin-gonic/gin"
 	"github.com/josemontano1996/ai-chatbot-backend/sharedtypes"
 )
 
-
 type ChatResponse struct {
-	AIResponse     *sharedtypes.Message
-	// UpdatedHistory *sharedtypes.History
-	TokenCount     int32
+	AIResponse       *sharedtypes.Message
+	TotalTokensSpend uint32
 }
 
-
-type AIService interface {
-	Chat(ctx *gin.Context, userMessage *sharedtypes.Message, prevHistory *sharedtypes.History) (*ChatResponse, error)
+type AIService[T any] interface {
+	SendChatMessage(userMessage *sharedtypes.Message, prevHistory *sharedtypes.History) (response *ChatResponse, metadata T, err error)
 }

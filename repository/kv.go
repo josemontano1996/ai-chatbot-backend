@@ -34,8 +34,8 @@ func (r *Redis) Delete(c *gin.Context, key string) *redis.IntCmd {
 	return r.client.Del(c, key)
 }
 
-func (r *Redis) AddToList(c *gin.Context, key string, value any) (int64, error) {
-	return r.client.RPush(c, key, value).Result()
+func (r *Redis) AddToList(c *gin.Context, key string, values ...any) (int64, error) {
+	return r.client.RPush(c, key, values...).Result()
 }
 
 func (r *Redis) GetList(c *gin.Context, key string, start int64, stop int64) ([]string, error) {

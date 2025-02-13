@@ -44,10 +44,11 @@ func handleConnections(c *gin.Context) {
 
 	kv := repository.NewRedis(envs.RedisAddress, envs.RedisPassword, 0)
 
+	optionalConfig := openai.OptionalOpenAIConfig{}
 
-	// initialize the ai config
-	optionalConfig := &openai.OptionalOpenAIConfig{}
-	AIService, err := openai.NewOpenAIService(userId, envs.OpenAiApiKey, openai.ModelOpenAIGpt4omini, envs.MaxCompletionTokens, *optionalConfig)
+	fmt.Println("creating open ai service")
+	var AIService services.AIService[*openai.OpenAIResponse]
+	AIService, err = openai.NewOpenAIService(userId, envs.OpenAiApiKey, openai.ModelOpenAIGpt4omini, envs.MaxCompletionTokens, &optionalConfig)
 
 	if err != nil {
 		log.Fatal("could not create open ai config: ", err)
@@ -65,62 +66,53 @@ func handleConnections(c *gin.Context) {
 			// TODO: handle parsing errors to the client via wesocket
 		}
 
-		msgHistory, err := kv.GetList(c, "userkey", 0, -1) // Get the entire list
+		jsonHistory, err := kv.GetList(c, "userkey", 0, -1) // Get the entire list
 
 		if err != nil {
 			log.Println("Error getting messages from Redis:", err)
 			continue
 		}
 
-		fmt.Println("boot open ai service: ", time.Now())
-		gemini, err := services.NewGeminiService(c, envs.GeminiApiKey, aiConfig)
+		prevHistory, err := sharedtypes.ParseJSONToHistory(jsonHistory)
 
 		if err != nil {
-			// TODO: handle more gracefully
-			log.Fatal("could not create gemini service: ", err)
-			return
+			log.Println("error parsing json history to struct: ", err)
 		}
-		fmt.Println("parseando historial: ", time.Now())
 
-		parsedMsgHistory := sharedtypes.ParseJSONToHistory(msgHistory)
-		response, err := gemini.Chat(c, &userMessage.Message, parsedMsgHistory)
+		fmt.Println("send api call to open ai: ", time.Now())
+
+		response, _, err := AIService.SendChatMessage(userMessage, prevHistory)
+
+		fmt.Println("received open ai response: ", time.Now())
 
 		if err != nil {
-			//TODO: handle more gracefully
-			log.Println("Error getting response from AI:", err)
-			continue
+			log.Println("error when calling the open ai api: ", err)
+			break
 		}
 
-		//TODO: substract amount of tokens used
-
-		responseMessageJSON, err := json.Marshal(response.Message)
+		userMsgJson, err := json.Marshal(userMessage)
 
 		if err != nil {
 			log.Println("Error Marshaling bot response to JSON", err)
 			continue
 		}
 
-		fmt.Println("guarndando mensaje de bot en kv: ", time.Now())
-		err = kv.RPush(c, "userkey", responseMessageJSON).Err()
+		responseMessageJSON, err := json.Marshal(response.AIResponse)
 
 		if err != nil {
-			log.Println("Error pushing bot response to Redis:", err)
+			log.Println("Error Marshaling bot response to JSON", err)
 			continue
 		}
 
-		fmt.Println("cargando historial 2: ", time.Now())
-		messages, err := kv.LRange(c, "userkey", 0, -1).Result() // Get the entire list
+		// adding the user message and the ai response to the kv history
+		_, err = kv.AddToList(c, "userkey", userMsgJson, responseMessageJSON)
+
 		if err != nil {
-			log.Println("Error getting messages from Redis:", err)
+			log.Println("Error pushing responses to Redis:", err)
 			continue
 		}
 
-		updatedHistory := sharedtypes.NewHistory(messages)
-		fmt.Println("historial parseado: ", time.Now())
-
-		fmt.Println("enviando respesta a cliente: ", time.Now())
-
-		err = client.Conn.WriteJSON(updatedHistory)
+		err = client.Conn.WriteJSON(response.AIResponse)
 		if err != nil {
 			log.Println("Error writing json:", err)
 			fmt.Println("break: ", time.Now())
@@ -128,6 +120,7 @@ func handleConnections(c *gin.Context) {
 			break
 		}
 		fmt.Println("final: ", time.Now())
-
+		//TODO: substract amount of tokens used
+		fmt.Println("reached bottom")
 	}
 }
