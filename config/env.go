@@ -5,9 +5,11 @@ import (
 )
 
 type Env struct {
-	RedisAddress  string `mapstructure:"REDIS__ADDRESS"`
-	RedisPassword string `mapstructure:"REDIS_PASSWORD"`
-	GeminiApiKey  string `mapstructure:"GEMINI_API_KEY"`
+	RedisAddress        string `mapstructure:"REDIS__ADDRESS"`
+	RedisPassword       string `mapstructure:"REDIS_PASSWORD"`
+	GeminiApiKey        string `mapstructure:"GEMINI_API_KEY"`
+	OpenAiApiKey        string `mapstructure:"OPENAI_API_KEY"`
+	MaxCompletionTokens uint32 `mapstructure:"MAX_COMPLETION_TOKENS"`
 }
 
 func LoadEnv(path string, fileName string) (env Env, err error) {

@@ -7,14 +7,17 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/josemontano1996/ai-chatbot-backend/api/ws"
 	"github.com/josemontano1996/ai-chatbot-backend/config"
+	"github.com/josemontano1996/ai-chatbot-backend/handlers"
 	"github.com/josemontano1996/ai-chatbot-backend/repository"
 	"github.com/josemontano1996/ai-chatbot-backend/services"
+	"github.com/josemontano1996/ai-chatbot-backend/services/openai"
 	"github.com/josemontano1996/ai-chatbot-backend/sharedtypes"
 )
 
-var userId int64 = 1
+var userId uuid.UUID = uuid.New()
 
 func PostAIController(c *gin.Context) {
 	handleConnections(c) // Upgrade to websocket on POST request
@@ -22,6 +25,7 @@ func PostAIController(c *gin.Context) {
 
 func handleConnections(c *gin.Context) {
 	expirationTime := 60 * time.Minute
+
 	client, err := ws.NewWSClient(c, userId, expirationTime)
 
 	if err != nil {
@@ -40,55 +44,35 @@ func handleConnections(c *gin.Context) {
 
 	kv := repository.NewRedis(envs.RedisAddress, envs.RedisPassword, 0)
 
-	// TODO change the fmt sprint to a string as it will be uuid string when db is up
-	redisHistory, err := kv.LRange(c, "userkey", 0, -1).Result()
-
-	if err != nil {
-		log.Fatal("could not reset the kv value: ", err)
-		return
-	}
-
-	prevHistory, err := sharedtypes.ParseJSONToHistory(redisHistory)
-
-	if err != nil {
-		fmt.Println("error parsing history: ", err)
-	}
-
-	if len(*prevHistory) == 0 {
-		fmt.Println("prev history: ", prevHistory)
-		//TODO: inject system prompt at the beginnig of the history
-	} else {
-		//Send previous history to the client
-		err = client.Conn.WriteJSON(prevHistory)
-		if err != nil {
-			log.Println("Error writing json: ", err)
-		}
-	}
 
 	// initialize the ai config
-	
+	optionalConfig := &openai.OptionalOpenAIConfig{}
+	AIService, err := openai.NewOpenAIService(userId, envs.OpenAiApiKey, openai.ModelOpenAIGpt4omini, envs.MaxCompletionTokens, *optionalConfig)
+
+	if err != nil {
+		log.Fatal("could not create open ai config: ", err)
+		return
+	}
+	//TODO: add a mechanism to block incoming requests if the model is processing
+	// var isProcessing bool = false
 
 	for {
 		fmt.Println("inside the lopp: ", time.Now())
 
-		var userMessage sharedtypes.Message
-		fmt.Println("leyendo json de la petiicon ", time.Now())
-
-		err := client.Conn.ReadJSON(&userMessage)
+		userMessage, err := handlers.ParseUserMessageFromRequest(c)
 		if err != nil {
-			log.Println("Error reading json:", err)
-			break
+			log.Println("Error parsing user message from request:", err)
+			// TODO: handle parsing errors to the client via wesocket
 		}
-		userMessage.Type = 1
 
-		msgHistory, err := kv.LRange(c, "userkey", 0, -1).Result() // Get the entire list
+		msgHistory, err := kv.GetList(c, "userkey", 0, -1) // Get the entire list
 
 		if err != nil {
 			log.Println("Error getting messages from Redis:", err)
 			continue
 		}
-		fmt.Println("boot gemini service: ", time.Now())
 
+		fmt.Println("boot open ai service: ", time.Now())
 		gemini, err := services.NewGeminiService(c, envs.GeminiApiKey, aiConfig)
 
 		if err != nil {

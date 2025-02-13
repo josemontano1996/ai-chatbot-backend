@@ -34,10 +34,10 @@ func (r *Redis) Delete(c *gin.Context, key string) *redis.IntCmd {
 	return r.client.Del(c, key)
 }
 
-func (r *Redis) RPush(c *gin.Context, key string, value any) *redis.IntCmd {
-	return r.client.RPush(c, key, value)
+func (r *Redis) AddToList(c *gin.Context, key string, value any) (int64, error) {
+	return r.client.RPush(c, key, value).Result()
 }
 
-func (r *Redis) LRange(c *gin.Context, key string, start int64, stop int64) *redis.StringSliceCmd {
-	return r.client.LRange(c, key, start, stop)
+func (r *Redis) GetList(c *gin.Context, key string, start int64, stop int64) ([]string, error) {
+	return r.client.LRange(c, key, start, stop).Result()
 }
