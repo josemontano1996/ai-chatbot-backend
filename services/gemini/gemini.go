@@ -1,14 +1,12 @@
-package services
+package gemini
 
 import (
-	"context"
 	"errors"
-	"fmt"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/generative-ai-go/genai"
+	"github.com/josemontano1996/ai-chatbot-backend/services"
 	"github.com/josemontano1996/ai-chatbot-backend/sharedtypes"
 
 	"google.golang.org/api/option"
@@ -28,13 +26,17 @@ const (
 	// FinishReasonOther means unknown reason.
 	FinishReasonOther int8 = 5
 )
-
 const (
 	Gemini15FlashModelName string = "gemini-1.5-flash"
+	GeminiTextOutput       string = "text"
+
+	geminiUserRole   string = "user"
+	geminiSystemRole string = "system"
+	geminiBotRole    string = "model"
 )
 
 type GeminiService struct {
-	ctx    context.Context
+	ctx    *gin.Context
 	client *genai.Client
 	model  *genai.GenerativeModel
 }
@@ -53,33 +55,17 @@ type AIResponse struct {
 	TokenCount int32
 }
 
-type AIServiceConfig struct {
-	ModelName         string `json:"model_name" validate:"required"`
-	SystemInstruction string `json:"system_instruction" validate:"required"`
-	MaxOutputTokens   int32  `json:"max_output_tokens" validate:"required"`
-	// ResponseMIMEType  string        `json:"response_mime_type,omitempty"`
-	// ResponseSchema    *genai.Schema `json:"response_schema,omitempty"`
-}
-
-func NewAIServiceConfig(model string, systemInstruction string, maxOutputTokens int32) *AIServiceConfig {
-	return &AIServiceConfig{
-		ModelName:         model,
-		SystemInstruction: systemInstruction,
-		MaxOutputTokens:   maxOutputTokens,
-	}
-}
-
 func NewGeminiService(ctx *gin.Context, apiKey string, config *AIServiceConfig) (*GeminiService, error) {
 
 	client, err := genai.NewClient(ctx, option.WithAPIKey(apiKey))
-	fmt.Println("connected to gemini: ", time.Now())
+
 	if err != nil {
 		return nil, err
 	}
 	model := client.GenerativeModel(config.ModelName)
 
 	model.SystemInstruction = &genai.Content{
-		Role:  "bot", // Or "model" depending on your requirements
+		Role:  geminiSystemRole,
 		Parts: []genai.Part{genai.Text(config.SystemInstruction)},
 	}
 	model.MaxOutputTokens = &config.MaxOutputTokens
@@ -87,7 +73,6 @@ func NewGeminiService(ctx *gin.Context, apiKey string, config *AIServiceConfig) 
 	// model.ResponseSchema = config.ResponseSchema
 	var candidateNumber int32 = 1
 	model.GenerationConfig.CandidateCount = &candidateNumber
-	fmt.Println("finished setting up model config: ", time.Now())
 
 	return &GeminiService{
 		ctx:    ctx,
@@ -95,26 +80,27 @@ func NewGeminiService(ctx *gin.Context, apiKey string, config *AIServiceConfig) 
 		model:  model}, nil
 }
 
-func (ai *GeminiService) Chat(ctx *gin.Context, userMessage *string, History *sharedtypes.History) (*AIResponse, error) {
-	defer ai.client.Close()
-	fmt.Println("started chat: ", time.Now())
+func (s GeminiService) SendChatMessage(userMessage *sharedtypes.Message, prevHistory *sharedtypes.History) (response *services.ChatResponse, metadata any, err error) {
 
-	session := ai.model.StartChat()
-	session.History = ai.parseHistory(History)
-	fmt.Println("sent message ", time.Now())
-	res, err := session.SendMessage(ctx, genai.Text(*userMessage))
+	chatSession := s.model.StartChat()
+
+	chatSession.History = s.parseHistory(prevHistory)
+
+	geminiResponse, err := chatSession.SendMessage(s.ctx, genai.Text(userMessage.Message))
 
 	if err != nil {
-		return nil, err
-	}
-	
-	fmt.Println("parsing response: ", time.Now())
-	parsedResponse, err := ai.parseAIRespose(res)
-	if err != nil {
-		return nil, err
+		return
 	}
 
-	return parsedResponse, nil
+	response, err = s.serializeResponse(geminiResponse)
+	metadata = ""
+	return
+}
+
+func (s GeminiService) Close() {
+	if s.client != nil {
+		s.client.Close()
+	}
 }
 func (ai *GeminiService) parseHistory(History *sharedtypes.History) []*genai.Content {
 	formattedHistory := make([]*genai.Content, 0)
@@ -123,17 +109,17 @@ func (ai *GeminiService) parseHistory(History *sharedtypes.History) []*genai.Con
 	arrayLength := len(*History)
 	for i, message := range *History {
 
-		if i == arrayLength-1 && message.Type > 0 {
+		if i == arrayLength-1 && message.Code == sharedtypes.UserMessageCode {
 			// if the last message is from the message, then we break because we will give this message to the model throw a direct message.
 			// if we do not break it will be added to the history and the model will be confused as the message is doubled
 			break
 		}
 
 		parsedHistoryElement.Parts = append(parsedHistoryElement.Parts, genai.Text(message.Message))
-		if message.Type < 0 {
-			parsedHistoryElement.Role = "model"
+		if message.Code == sharedtypes.UserMessageCode {
+			parsedHistoryElement.Role = geminiUserRole
 		} else {
-			parsedHistoryElement.Role = "user"
+			parsedHistoryElement.Role = geminiBotRole
 		}
 
 		formattedHistory = append(formattedHistory, parsedHistoryElement)
@@ -142,15 +128,15 @@ func (ai *GeminiService) parseHistory(History *sharedtypes.History) []*genai.Con
 	return formattedHistory
 }
 
-func (ai *GeminiService) parseAIRespose(res *genai.GenerateContentResponse) (*AIResponse, error) {
+func (ai *GeminiService) serializeResponse(res *genai.GenerateContentResponse) (*services.ChatResponse, error) {
 	if len(res.Candidates) == 0 {
-		return &AIResponse{}, errors.New("no candidates found")
+		return &services.ChatResponse{}, errors.New("no candidates found")
 	}
 
 	candidate := res.Candidates[0]
 	if candidate.FinishReason != 1 {
 		_, err := ai.parseCandidateError(candidate)
-		return &AIResponse{}, err
+		return &services.ChatResponse{}, err
 	}
 
 	finalMessage := ""
@@ -158,12 +144,12 @@ func (ai *GeminiService) parseAIRespose(res *genai.GenerateContentResponse) (*AI
 		finalMessage = *cs
 	}
 
-	return &AIResponse{
-		Message: &sharedtypes.Message{
+	return &services.ChatResponse{
+		AIResponse: &sharedtypes.Message{
+			Code:    sharedtypes.AIBotResponseCode,
 			Message: finalMessage,
-			Type:    -1,
 		},
-		TokenCount: candidate.TokenCount,
+		TotalTokensSpend: uint32(candidate.TokenCount),
 	}, nil
 }
 
@@ -201,32 +187,3 @@ func (ai *GeminiService) parseCandidateError(candidate *genai.Candidate) (int8, 
 		return FinishReasonUnspecified, nil
 	}
 }
-
-// type GenerateContentConfig struct {
-// 	// docs: https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/inference#generationconfig
-// 	// https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/content-generation-parameters
-// 	SystemInstruction string `json:"systemInstruction" validate:"required"`
-// 	MaxOutputTokens   uint16 `json:"maxOutputTokens" validate:"required"`
-// 	ResposeMimeType   string `json:"responseMimeType,omitempty"`
-// 	ResponseSchema    string `json:"responseSchema,omitempty"`
-// }
-
-// func NewGeminiClient(c context.Context, apiKey string) (*GeminiClient, error) {
-// 	client, err := genai.NewClient(c, option.WithAPIKey(apiKey))
-
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	return &GeminiClient{
-// 		Client: client,
-// 	}, nil
-// }
-
-// func (ai GeminiClient) GenerateContent(c *context.Context, model string, content []*genai.Content, config *genai.GenerateContentConfig) {
-// 	ai.Client.Models.GenerateContent(*c, model, content, config)
-// }
-
-// func NewPrompt() {
-// 	candidates := 1
-// }
