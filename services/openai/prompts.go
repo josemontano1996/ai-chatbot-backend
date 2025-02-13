@@ -1,58 +1,90 @@
 package openai
 
-import "github.com/josemontano1996/ai-chatbot-backend/sharedtypes"
+import (
+	"github.com/josemontano1996/ai-chatbot-backend/sharedtypes"
+)
 
-func createUserPrompt(prompt string) *openAIMessage {
-	return &openAIMessage{
+// Changed return type to value type for safety
+func createUserPrompt(prompt string) openAIMessage {
+	return openAIMessage{
 		Role:    openAIUserRole,
 		Content: prompt,
 	}
 }
 
-func createSystemPrompt(prompt string) *openAIMessage {
-	return &openAIMessage{
+// Changed return type to value type
+func createSystemPrompt(prompt string) openAIMessage {
+	return openAIMessage{
 		Role:    openAISystemRole,
 		Content: prompt,
 	}
 }
 
-func createBotPrompt(prompt string) *openAIMessage {
-	return &openAIMessage{
+// Changed return type to value type
+func createBotPrompt(prompt string) openAIMessage {
+	return openAIMessage{
 		Role:    openAIBotRole,
 		Content: prompt,
 	}
 }
 
-func createPrompts(systemInstructions string, userMessage *sharedtypes.Message, prevHistory *sharedtypes.History) *[]openAIMessage {
+// Changed return type to value slice and added error handling
+func createPrompts(systemInstructions string, userMessage *sharedtypes.Message, prevHistory *sharedtypes.History) ([]openAIMessage, error) {
+	if userMessage == nil {
+		userMessage = &sharedtypes.Message{}
+	}
+
 	systemPrompt := createSystemPrompt(systemInstructions)
 	userPrompt := createUserPrompt(userMessage.Message)
-	mergedPrompts := mergePrompts(systemPrompt, userPrompt, prevHistory)
+
+	// Handle nil history
+	var history []sharedtypes.Message
+	if prevHistory != nil {
+		history = *prevHistory
+	}
+
+	merged := mergePrompts(systemPrompt, userPrompt, history)
+	return merged, nil
+}
+
+// Changed parameters to value types and added safety checks
+func mergePrompts(systemPrompt openAIMessage, userPrompt openAIMessage, history []sharedtypes.Message) []openAIMessage {
+	var mergedPrompts []openAIMessage
+
+	// Add system prompt (always present)
+	mergedPrompts = append(mergedPrompts, systemPrompt)
+
+	// Process history safely
+	for _, msg := range history {
+		prompt := messageToOpenAIPrompt(msg)
+		if prompt != nil {
+			mergedPrompts = append(mergedPrompts, *prompt)
+		}
+	}
+
+	// Add user prompt (always present)
+	mergedPrompts = append(mergedPrompts, userPrompt)
+
 	return mergedPrompts
 }
 
-func mergePrompts(systemPrompt *openAIMessage, userPrompt *openAIMessage, history *sharedtypes.History) *[]openAIMessage {
-	var mergedPrompts []openAIMessage
-
-	// Create a new prompt with the system message
-	mergedPrompts = append(mergedPrompts, *systemPrompt)
-	// Add the history of prompts until now
-	for _, prompt := range *history {
-		mergedPrompts = append(mergedPrompts, *messageToOpenAIPrompt(prompt))
-	}
-	// Add the new user message prompt
-	mergedPrompts = append(mergedPrompts, *userPrompt)
-
-	return &mergedPrompts
-}
-
+// Changed parameter to value type and added validation
 func messageToOpenAIPrompt(message sharedtypes.Message) *openAIMessage {
+	if message.Message == "" {
+		return nil
+	}
+
 	switch message.Code {
 	case sharedtypes.AIBotResponseCode:
-		return createBotPrompt(message.Message)
+		p := createBotPrompt(message.Message)
+		return &p
 	case sharedtypes.AISystemMessageCode:
-		return createSystemPrompt(message.Message)
+		p := createSystemPrompt(message.Message)
+		return &p
 	case sharedtypes.UserMessageCode:
-		return createUserPrompt(message.Message)
+		p := createUserPrompt(message.Message)
+		return &p
+	default:
+		return nil
 	}
-	return nil
 }

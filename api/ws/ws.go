@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"github.com/josemontano1996/ai-chatbot-backend/sharedtypes"
 )
 
 var upgrader = websocket.Upgrader{
@@ -68,4 +69,16 @@ func NewWSClient(c *gin.Context, UserId uuid.UUID, timeout time.Duration) (*WSCl
 		Conn:   conn,
 		UserId: UserId,
 	}, nil
+}
+
+func (ws WSClient) ParseIncommingRequests() (*sharedtypes.Message, error) {
+	var userMsg sharedtypes.Message
+	err := ws.Conn.ReadJSON(&userMsg)
+	if err != nil {
+		return nil, err
+	}
+
+	userMsg.Code = sharedtypes.UserMessageCode
+
+	return &userMsg, nil
 }

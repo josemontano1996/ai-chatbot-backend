@@ -17,7 +17,7 @@ type OpenAIConfig struct {
 type OptionalOpenAIConfig struct {
 	Temperature     float32  `json:"temperature" validate:"omitempty"`
 	PresencePenalty float32  `json:"presence_penalty" validate:"omitempty"`
-	OutputType      []string `json:"output_type" validate:"omitempty,oneof=text json_object json_schema"`
+	OutputType []string `json:"output_type" validate:"omitempty,dive,oneof=text json_object json_schema"`
 }
 
 var DefaultOptionalConfig = OptionalOpenAIConfig{

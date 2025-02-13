@@ -65,7 +65,11 @@ func NewOpenAIService(userId uuid.UUID, apiKey string, model string, maxCompleti
 
 func (s *OpenAIService) SendChatMessage(userMessage *sharedtypes.Message, prevHistory *sharedtypes.History) (response *services.ChatResponse, metadata *OpenAIResponse, err error) {
 	instructions := "You are a helpful chatbot"
-	prompts := createPrompts(instructions, userMessage, prevHistory)
+	prompts, err := createPrompts(instructions, userMessage, prevHistory)
+
+	if err != nil {
+		return
+	}
 	req, err := s.createRequestBody(prompts)
 
 	if err != nil {
@@ -129,12 +133,12 @@ func serializeResponse(data *OpenAIResponse) (*services.ChatResponse, error) {
 	}, nil
 }
 
-func (s *OpenAIService) createRequestBody(prompts *[]openAIMessage) (*http.Request, error) {
+func (s *OpenAIService) createRequestBody(prompts []openAIMessage) (*http.Request, error) {
 
 	requestBody := openAIRequest{
 		User:                s.config.UserId,
 		Model:               s.config.Model,
-		Messages:            *prompts,
+		Messages:            prompts,
 		MaxCompletionTokens: s.config.MaxCompletionTokens,
 		Modalities:          s.config.OptionalConfig.OutputType,
 		PresencePenalty:     s.config.OptionalConfig.PresencePenalty,

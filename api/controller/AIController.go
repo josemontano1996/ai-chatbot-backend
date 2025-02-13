@@ -10,7 +10,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/josemontano1996/ai-chatbot-backend/api/ws"
 	"github.com/josemontano1996/ai-chatbot-backend/config"
-	"github.com/josemontano1996/ai-chatbot-backend/handlers"
 	"github.com/josemontano1996/ai-chatbot-backend/repository"
 	"github.com/josemontano1996/ai-chatbot-backend/services"
 	"github.com/josemontano1996/ai-chatbot-backend/services/openai"
@@ -26,14 +25,14 @@ func PostAIController(c *gin.Context) {
 func handleConnections(c *gin.Context) {
 	expirationTime := 60 * time.Minute
 
-	client, err := ws.NewWSClient(c, userId, expirationTime)
+	wsClient, err := ws.NewWSClient(c, userId, expirationTime)
 
 	if err != nil {
 		log.Fatal("fatal error connecting to websocket: ", err)
 		return
 	}
 
-	defer client.Conn.Close()
+	defer wsClient.Conn.Close()
 	fmt.Println("ws connectado: ", time.Now())
 
 	envs, err := config.LoadEnv("./", "prod")
@@ -60,10 +59,12 @@ func handleConnections(c *gin.Context) {
 	for {
 		fmt.Println("inside the lopp: ", time.Now())
 
-		userMessage, err := handlers.ParseUserMessageFromRequest(c)
+		userMessage, err := wsClient.ParseIncommingRequests()
+		fmt.Println("request received")
 		if err != nil {
 			log.Println("Error parsing user message from request:", err)
-			// TODO: handle parsing errors to the client via wesocket
+			// must terminate here or can get in a infinite loop, have to check more in detail how to handle it
+			break
 		}
 
 		jsonHistory, err := kv.GetList(c, "userkey", 0, -1) // Get the entire list
@@ -112,7 +113,7 @@ func handleConnections(c *gin.Context) {
 			continue
 		}
 
-		err = client.Conn.WriteJSON(response.AIResponse)
+		err = wsClient.Conn.WriteJSON(response.AIResponse)
 		if err != nil {
 			log.Println("Error writing json:", err)
 			fmt.Println("break: ", time.Now())
