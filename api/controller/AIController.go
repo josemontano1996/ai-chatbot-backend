@@ -12,7 +12,7 @@ import (
 	"github.com/josemontano1996/ai-chatbot-backend/config"
 	"github.com/josemontano1996/ai-chatbot-backend/repository"
 	"github.com/josemontano1996/ai-chatbot-backend/services"
-	"github.com/josemontano1996/ai-chatbot-backend/services/openai"
+	"github.com/josemontano1996/ai-chatbot-backend/services/gemini"
 	"github.com/josemontano1996/ai-chatbot-backend/sharedtypes"
 )
 
@@ -43,19 +43,23 @@ func handleConnections(c *gin.Context) {
 
 	kv := repository.NewRedis(envs.RedisAddress, envs.RedisPassword, 0)
 
-	optionalConfig := openai.OptionalOpenAIConfig{}
+	// optionalConfig := openai.OptionalOpenAIConfig{}
 
-	fmt.Println("creating open ai service")
-	var AIService services.AIService[*openai.OpenAIResponse]
-	AIService, err = openai.NewOpenAIService(userId, envs.OpenAiApiKey, openai.ModelOpenAIGpt4omini, envs.MaxCompletionTokens, &optionalConfig)
+	// fmt.Println("creating open ai service")
+	// var AIService services.AIService[*openai.OpenAIResponse]
+	// AIService, err = openai.NewOpenAIService(userId, envs.OpenAiApiKey, openai.ModelOpenAIGpt4omini, envs.MaxCompletionTokens, &optionalConfig)
+
+	var AIService services.AIService[any]
+	geminiConfig := gemini.NewAIServiceConfig(gemini.Gemini15FlashModelName, "You are a helpful assistant", 2000)
+	AIService, err = gemini.NewGeminiService(c, envs.GeminiApiKey, geminiConfig)
 
 	if err != nil {
 		log.Fatal("could not create open ai config: ", err)
 		return
 	}
+	defer AIService.Close()
 	//TODO: add a mechanism to block incoming requests if the model is processing
 	// var isProcessing bool = false
-
 	for {
 		fmt.Println("inside the lopp: ", time.Now())
 

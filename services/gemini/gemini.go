@@ -81,7 +81,6 @@ func NewGeminiService(ctx *gin.Context, apiKey string, config *AIServiceConfig) 
 }
 
 func (s GeminiService) SendChatMessage(userMessage *sharedtypes.Message, prevHistory *sharedtypes.History) (response *services.ChatResponse, metadata any, err error) {
-	defer s.client.Close()
 
 	chatSession := s.model.StartChat()
 
@@ -98,6 +97,11 @@ func (s GeminiService) SendChatMessage(userMessage *sharedtypes.Message, prevHis
 	return
 }
 
+func (s GeminiService) Close() {
+	if s.client != nil {
+		s.client.Close()
+	}
+}
 func (ai *GeminiService) parseHistory(History *sharedtypes.History) []*genai.Content {
 	formattedHistory := make([]*genai.Content, 0)
 	parsedHistoryElement := &genai.Content{}
