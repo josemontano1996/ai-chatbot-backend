@@ -16,9 +16,6 @@ import (
 const (
 	ModelOpenAIGpt4omini   string = "gpt-4o-mini"
 	ModelOpenAIGpt4o       string = "gpt-4o"
-	OpenAISystemRole       string = "system"
-	OpenAIUserRole         string = "user"
-	OpenAIBotRole          string = "assistant"
 	OpenAITextOutput       string = "text"
 	OpenAIJSONObjectOutput string = "json_object"
 	OpenAIJSONSchemaOutput string = "json_schema"

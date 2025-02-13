@@ -11,4 +11,5 @@ type ChatResponse struct {
 
 type AIService[T any] interface {
 	SendChatMessage(userMessage *sharedtypes.Message, prevHistory *sharedtypes.History) (response *ChatResponse, metadata T, err error)
+	Close()
 }
