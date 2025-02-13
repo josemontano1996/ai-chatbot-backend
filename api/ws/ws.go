@@ -9,7 +9,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"github.com/josemontano1996/ai-chatbot-backend/sharedtypes"
 )
 
 var upgrader = websocket.Upgrader{

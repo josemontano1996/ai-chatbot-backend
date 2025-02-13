@@ -23,24 +23,36 @@ func createBotPrompt(prompt string) *openAIMessage {
 	}
 }
 
-func createPrompts(systemInstructions string, userMessage *sharedtypes.Message, prevHistory *[]openAIMessage) *[]openAIMessage {
+func createPrompts(systemInstructions string, userMessage *sharedtypes.Message, prevHistory *sharedtypes.History) *[]openAIMessage {
 	systemPrompt := createSystemPrompt(systemInstructions)
 	userPrompt := createUserPrompt(userMessage.Message)
 	mergedPrompts := mergePrompts(systemPrompt, userPrompt, prevHistory)
 	return mergedPrompts
 }
 
-func mergePrompts(systemPrompt *openAIMessage, userPrompt *openAIMessage, history *[]openAIMessage) *[]openAIMessage {
+func mergePrompts(systemPrompt *openAIMessage, userPrompt *openAIMessage, history *sharedtypes.History) *[]openAIMessage {
 	var mergedPrompts []openAIMessage
 
 	// Create a new prompt with the system message
 	mergedPrompts = append(mergedPrompts, *systemPrompt)
 	// Add the history of prompts until now
 	for _, prompt := range *history {
-		mergedPrompts = append(mergedPrompts, prompt)
+		mergedPrompts = append(mergedPrompts, *messageToOpenAIPrompt(prompt))
 	}
 	// Add the new user message prompt
 	mergedPrompts = append(mergedPrompts, *userPrompt)
 
 	return &mergedPrompts
+}
+
+func messageToOpenAIPrompt(message sharedtypes.Message) *openAIMessage {
+	switch message.Code {
+	case sharedtypes.AIBotResponseCode:
+		return createBotPrompt(message.Message)
+	case sharedtypes.AISystemMessageCode:
+		return createSystemPrompt(message.Message)
+	case sharedtypes.UserMessageCode:
+		return createUserPrompt(message.Message)
+	}
+	return nil
 }

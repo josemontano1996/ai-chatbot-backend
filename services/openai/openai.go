@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -30,6 +31,7 @@ const (
 
 type OpenAIService struct {
 	config *OpenAIConfig
+	client *http.Client
 }
 
 type openAIMessage struct {
@@ -48,9 +50,6 @@ type openAIRequest struct {
 	User                uuid.UUID       `json:"user" validate:"required"`
 }
 
-
-
-
 func NewOpenAIService(userId uuid.UUID, apiKey string, model string, maxCompletionTokens uint32, optional OptionalOpenAIConfig) (*OpenAIService, error) {
 	conf, err := newOpenAIConfig(userId, apiKey, model, maxCompletionTokens, optional)
 
@@ -58,26 +57,46 @@ func NewOpenAIService(userId uuid.UUID, apiKey string, model string, maxCompleti
 		return nil, err
 	}
 
+	client := &http.Client{}
 	return &OpenAIService{
-		config: conf}, nil
+		config: conf, client: client}, nil
 }
 
-func (s *OpenAIService) SendChatMessage(userMessage *sharedtypes.Message, prevHistory *[]openAIMessage) (*openAIRequest, error) {
+func (s *OpenAIService) SendChatMessage(userMessage *sharedtypes.Message, prevHistory *sharedtypes.History) (*OpenAIResponse, error) {
 	instructions := "You are a helpful chatbot"
 	prompts := createPrompts(instructions, userMessage, prevHistory)
 	req, err := s.createRequestBody(prompts)
 
-	client := &http.Client{}
+	if err != nil {
+		return nil, err
+	}
 
-	resp, err := client.Do(req)
+	resp, err := s.client.Do(req)
 
 	if err != nil {
-		if resp.StatusCode != http.StatusOK {
-			err = fmt.Errorf("response status code was not 200: %d", resp.StatusCode)
-			return nil, err
-		}
-		return nil, errors.New("could not send request")
+		return nil, fmt.Errorf("error sending request to OpenAI: %w", err)
 	}
+
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("OpenAI API request failed with status code: %d, response body: %s", resp.StatusCode, string(body))
+	}
+
+	var parsedBody OpenAIResponse
+
+	err = json.Unmarshal(body, &parsedBody)
+
+	if err != nil {
+		return nil, fmt.Errorf("error parsing JSON response from OpenAI: %w, response body: %s", err, string(body))
+	}
+
+	return &parsedBody, nil
 
 }
 
