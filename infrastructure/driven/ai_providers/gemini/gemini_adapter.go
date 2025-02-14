@@ -30,13 +30,11 @@ type GeminiAdapter struct {
 	model  *genai.GenerativeModel
 }
 
-var minimumOutputTokens int32 = 500
-
 type geminiConfig struct { //  Config struct for adapter initialization
 	APIKey          string `validate:"required"`
 	ModelName       string `validate:"required"`
-	MaxOutputTokens int32  `validate:"required,min=500"`
 	candidateNumber int32  `validate:"required,min=1"`
+	MaxOutputTokens int32
 }
 
 func NewGeminiAdapter(ctx context.Context, config geminiConfig) (*GeminiAdapter, error) {
@@ -48,7 +46,7 @@ func NewGeminiAdapter(ctx context.Context, config geminiConfig) (*GeminiAdapter,
 
 	model := client.GenerativeModel(config.ModelName)
 
-	model.SetMaxOutputTokens(config.MaxOutputTokens)
+	// model.SetMaxOutputTokens(config.MaxOutputTokens)
 	model.SetCandidateCount(config.candidateNumber)
 
 	return &GeminiAdapter{
@@ -76,11 +74,7 @@ func NewGeminiConfig(apiKey string, modelName string, maxOutputTokens int32) (*g
 
 	configStruct.candidateNumber = 1
 
-	if maxOutputTokens < 500 {
-		configStruct.MaxOutputTokens = minimumOutputTokens
-	} else {
-		configStruct.MaxOutputTokens = maxOutputTokens
-	}
+	configStruct.MaxOutputTokens = maxOutputTokens
 
 	validator := validator.New()
 
@@ -97,7 +91,7 @@ func (ad *GeminiAdapter) SendMessage(ctx context.Context, userMessage *entities.
 
 	ad.model.SystemInstruction = &genai.Content{
 		Role:  geminiSystemRole,
-		Parts: []genai.Part{genai.Text("You are a haleful assistant, help the user with their enquiries")},
+		Parts: []genai.Part{genai.Text("You are a helpful assistant, help the user with their enquiries")},
 	}
 
 	chatSession := ad.model.StartChat()

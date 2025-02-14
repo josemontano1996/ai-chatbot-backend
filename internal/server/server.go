@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	api "github.com/josemontano1996/ai-chatbot-backend/infrastructure/driving/api/controllers"
+	"github.com/josemontano1996/ai-chatbot-backend/infrastructure/driving/api"
 )
 
 type Server struct {
@@ -30,7 +30,7 @@ func (s *Server) RegisterRoutes(AIController *api.AIController) {
 		ctx.JSON(http.StatusOK, gin.H{"status": "healthy"})
 	})
 
-	s.router.POST("/ai", AIController.ChatWithAI)
+	s.router.GET("/chat", AIController.ChatWithAI)
 }
 
 func (s *Server) RunServer(port string) error {

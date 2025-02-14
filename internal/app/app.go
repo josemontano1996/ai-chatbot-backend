@@ -8,8 +8,8 @@ import (
 	"github.com/josemontano1996/ai-chatbot-backend/domain/usecases"
 	geminiadapter "github.com/josemontano1996/ai-chatbot-backend/infrastructure/driven/ai_providers/gemini"
 	repository "github.com/josemontano1996/ai-chatbot-backend/infrastructure/driven/respository/redis"
-	api "github.com/josemontano1996/ai-chatbot-backend/infrastructure/driving/api/controllers"
-	"github.com/josemontano1996/ai-chatbot-backend/infrastructure/server"
+	"github.com/josemontano1996/ai-chatbot-backend/infrastructure/driving/api"
+	"github.com/josemontano1996/ai-chatbot-backend/internal/server"
 )
 
 func StartApp() {
