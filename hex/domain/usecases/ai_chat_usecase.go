@@ -22,10 +22,9 @@ func NewChatUseCase[T any](user entities.User, aiProvider outputport.AIProvider[
 	}
 }
 
-func (uc *AIChatUseCase[T]) SendChatMessage(userMessage *entities.ChatMessage, history *entities.ChatHistory) (*inputport.AIChatResponse, error) {
-	ctx := context.Background()
+func (uc *AIChatUseCase[T]) SendChatMessage(ctx context.Context, userMessage *entities.ChatMessage, history *entities.ChatHistory) (*inputport.AIChatResponse, error) {
 
-	aiResponse, _, err := uc.aiProvider.SendMessage(userMessage, history)
+	aiResponse, _, err := uc.aiProvider.SendMessage(ctx, userMessage, history)
 
 	if err != nil {
 		return &inputport.AIChatResponse{}, err

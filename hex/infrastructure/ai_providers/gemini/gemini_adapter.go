@@ -89,11 +89,11 @@ func NewGeminiConfig(apiKey string, modelName string, systemInstruction *string,
 	return &configStruct, nil
 }
 
-func (ad *GeminiAdapter) SendMessage(userMessage *entities.ChatMessage, prevHistory *entities.ChatHistory) (*inputport.AIChatResponse, *outputport.AIResposeMetadata[any], error) {
+func (ad *GeminiAdapter) SendMessage(ctx context.Context, userMessage *entities.ChatMessage, prevHistory *entities.ChatHistory) (*inputport.AIChatResponse, *outputport.AIResposeMetadata[any], error) {
 	chatSession := ad.model.StartChat()
 	chatSession.History = ad.parseChatHistory(prevHistory)
 
-	geminiResponse, err := chatSession.SendMessage(context.Background(), genai.Text(userMessage.Message))
+	geminiResponse, err := chatSession.SendMessage(ctx, genai.Text(userMessage.Message))
 
 	if err != nil {
 		return &inputport.AIChatResponse{}, &outputport.AIResposeMetadata[any]{}, err

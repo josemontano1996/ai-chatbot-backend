@@ -1,6 +1,8 @@
 package outputport
 
 import (
+	"context"
+
 	"github.com/josemontano1996/ai-chatbot-backend/hex/domain/entities"
 	inputport "github.com/josemontano1996/ai-chatbot-backend/hex/domain/ports/input"
 )
@@ -12,6 +14,6 @@ type AIResposeMetadata[T any] struct {
 }
 
 type AIProvider[T any] interface {
-	SendMessage(userMsg *entities.ChatMessage, prevHistory *entities.ChatHistory) (*inputport.AIChatResponse, *AIResposeMetadata[T], error)
+	SendMessage(ctx context.Context, userMsg *entities.ChatMessage, prevHistory *entities.ChatHistory) (*inputport.AIChatResponse, *AIResposeMetadata[T], error)
 	CloseConnection()
 }

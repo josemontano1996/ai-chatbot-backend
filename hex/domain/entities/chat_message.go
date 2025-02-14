@@ -24,17 +24,7 @@ type ChatMessage struct {
 }
 
 func NewMessage(code ChatMessageCode, message string) (*ChatMessage, error) {
-	// Validate the message code
-	validCode := false
-
-	for _, allowedCode := range AllowedChatMessageCodes {
-		if code == allowedCode {
-			validCode = true
-			break
-		}
-	}
-
-	if !validCode {
+	if !isValidMessageCode(code) {
 		err := fmt.Errorf("invalid message code: %v, allowed codes: %v", code, AllowedChatMessageCodes)
 		return &ChatMessage{}, err
 	}
@@ -53,6 +43,15 @@ func NewMessage(code ChatMessageCode, message string) (*ChatMessage, error) {
 	}
 
 	return &chatMessage, nil
+}
+
+func isValidMessageCode(code ChatMessageCode) bool {
+	for _, allowedCode := range AllowedChatMessageCodes {
+		if code == allowedCode {
+			return true
+		}
+	}
+	return false
 }
 
 // Chat history should never contain system messages

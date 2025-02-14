@@ -1,6 +1,8 @@
 package inputport
 
 import (
+	"context"
+
 	"github.com/josemontano1996/ai-chatbot-backend/hex/domain/entities"
 )
 
@@ -11,5 +13,5 @@ type AIChatResponse struct {
 
 // ChatService defines the use cases related to chat functionality
 type AIChatService interface {
-	SendChatMessage(userMessage *entities.ChatMessage, history *entities.ChatHistory) (*AIChatResponse, error)
+	SendChatMessage(ctx context.Context, userMessage *entities.ChatMessage, history *entities.ChatHistory) (*AIChatResponse, error)
 }
