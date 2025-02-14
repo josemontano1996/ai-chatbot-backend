@@ -3,20 +3,23 @@ package entities
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/go-playground/validator/v10"
 )
 
 type ChatMessageCode int8
 
 const (
-	UserChatMessageCode     ChatMessageCode = 1
-	AIBotChatMessageCode    ChatMessageCode = 2
-	AISystemChatMessageCode ChatMessageCode = 3
+	UserChatMessageCode  ChatMessageCode = 1
+	AIBotChatMessageCode ChatMessageCode = 2
+	// Chat messages should never display system information
+	// AISystemChatMessageCode ChatMessageCode = 3
 )
 
-var AllowedChatMessageCodes = []ChatMessageCode{UserChatMessageCode, AIBotChatMessageCode, AISystemChatMessageCode}
+var AllowedChatMessageCodes = []ChatMessageCode{UserChatMessageCode, AIBotChatMessageCode}
 
 type ChatMessage struct {
-	Code    ChatMessageCode `json:"code"`
+	Code    ChatMessageCode `json:"code" validate:"required,oneof=1 2"`
 	Message string          `json:"message" binding:"required" validate:"required"`
 }
 
@@ -36,12 +39,23 @@ func NewMessage(code ChatMessageCode, message string) (*ChatMessage, error) {
 		return &ChatMessage{}, err
 	}
 
-	return &ChatMessage{
+	chatMessage := ChatMessage{
 		Code:    code,
-		Message: message,
-	}, nil
+		Message: message}
+
+	validator := validator.New()
+
+	err := validator.Struct(chatMessage)
+
+	if err != nil {
+		err := fmt.Errorf("invalid message structure: %d", err)
+		return &ChatMessage{}, err
+	}
+
+	return &chatMessage, nil
 }
 
+// Chat history should never contain system messages
 type ChatHistory []ChatMessage
 
 func ParseArrayToChatHistory(messageArray []string) (*ChatHistory, error) {
