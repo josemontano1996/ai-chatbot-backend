@@ -1,18 +1,17 @@
-package app
+package api
 
 import (
 	"context"
 	"log"
 
-	"github.com/josemontano1996/ai-chatbot-backend/config"
-	"github.com/josemontano1996/ai-chatbot-backend/domain/usecases"
 	geminiadapter "github.com/josemontano1996/ai-chatbot-backend/infrastructure/driven/ai_providers/gemini"
 	repository "github.com/josemontano1996/ai-chatbot-backend/infrastructure/driven/respository/redis"
-	"github.com/josemontano1996/ai-chatbot-backend/infrastructure/driving/api"
-	"github.com/josemontano1996/ai-chatbot-backend/internal/server"
+	controller "github.com/josemontano1996/ai-chatbot-backend/infrastructure/driving/api/controllers"
+	"github.com/josemontano1996/ai-chatbot-backend/internal/config"
+	"github.com/josemontano1996/ai-chatbot-backend/internal/usecases"
 )
 
-func StartApp() {
+func RunRestApi() {
 	config, err := config.LoadEnv("./", "prod")
 
 	if err != nil {
@@ -41,10 +40,10 @@ func StartApp() {
 	AIChatUseCase := usecases.NewAIChatUseCase(geminiProvider, redisRepo)
 
 	// Interface/Presenter layer setup
-	AIController := api.NewAIController(AIChatUseCase, redisRepo)
+	AIController := controller.NewAIController(AIChatUseCase, redisRepo)
 
 	// Create Gin Router and register routes
-	server := server.NewServer()
+	server := NewServer()
 	server.RegisterRoutes(AIController)
 
 	// Start server

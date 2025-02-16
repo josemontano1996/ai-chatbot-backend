@@ -1,7 +1,6 @@
 package openaiadapter
 
-import "github.com/josemontano1996/ai-chatbot-backend/domain/entities"
-
+import "github.com/josemontano1996/ai-chatbot-backend/internal/entities"
 
 func (s *OpenAIAdapter) createPrompts(systemInstructions string, userMessage *entities.ChatMessage, prevHistory *entities.ChatHistory) ([]openAIMessage, error) {
 	if userMessage == nil {

@@ -1,4 +1,4 @@
-package api
+package controller
 
 import (
 	"log"
@@ -8,18 +8,19 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"github.com/josemontano1996/ai-chatbot-backend/domain/entities"
-	inputport "github.com/josemontano1996/ai-chatbot-backend/domain/ports/input"
-	outputport "github.com/josemontano1996/ai-chatbot-backend/domain/ports/output"
+
 	"github.com/josemontano1996/ai-chatbot-backend/infrastructure/driving/ws"
+	"github.com/josemontano1996/ai-chatbot-backend/internal/entities"
+	"github.com/josemontano1996/ai-chatbot-backend/internal/ports/in"
+	"github.com/josemontano1996/ai-chatbot-backend/internal/ports/out"
 )
 
 type AIController struct {
-	aiChatUseCase         inputport.AIChatUseCase
-	chatMessageRepository outputport.ChatMessageRepository
+	aiChatUseCase         in.AIChatUseCase
+	chatMessageRepository out.ChatMessageRepository
 }
 
-func NewAIController(aiChatUseCase inputport.AIChatUseCase, chatMessageRespository outputport.ChatMessageRepository) *AIController {
+func NewAIController(aiChatUseCase in.AIChatUseCase, chatMessageRespository out.ChatMessageRepository) *AIController {
 	return &AIController{
 		aiChatUseCase:         aiChatUseCase,
 		chatMessageRepository: chatMessageRespository,

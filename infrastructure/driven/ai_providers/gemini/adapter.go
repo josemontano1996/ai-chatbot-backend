@@ -8,9 +8,10 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/generative-ai-go/genai"
-	"github.com/josemontano1996/ai-chatbot-backend/domain/entities"
-	inputport "github.com/josemontano1996/ai-chatbot-backend/domain/ports/input"
-	outputport "github.com/josemontano1996/ai-chatbot-backend/domain/ports/output"
+	"github.com/josemontano1996/ai-chatbot-backend/internal/entities"
+	"github.com/josemontano1996/ai-chatbot-backend/internal/ports/in"
+	"github.com/josemontano1996/ai-chatbot-backend/internal/ports/out"
+
 	"google.golang.org/api/option"
 )
 
@@ -87,7 +88,7 @@ func NewGeminiConfig(apiKey string, modelName string, maxOutputTokens int32) (*g
 	return &configStruct, nil
 }
 
-func (ad *GeminiAdapter) SendMessage(ctx context.Context, userMessage *entities.ChatMessage, prevHistory *entities.ChatHistory) (*inputport.AIChatResponse, *outputport.AIResposeMetadata[any], error) {
+func (ad *GeminiAdapter) SendMessage(ctx context.Context, userMessage *entities.ChatMessage, prevHistory *entities.ChatHistory) (*in.AIChatResponse, *out.AIResposeMetadata[any], error) {
 
 	ad.model.SystemInstruction = &genai.Content{
 		Role:  geminiSystemRole,
@@ -100,13 +101,13 @@ func (ad *GeminiAdapter) SendMessage(ctx context.Context, userMessage *entities.
 	geminiResponse, err := chatSession.SendMessage(ctx, genai.Text(userMessage.Message))
 
 	if err != nil {
-		return &inputport.AIChatResponse{}, &outputport.AIResposeMetadata[any]{}, err
+		return &in.AIChatResponse{}, &out.AIResposeMetadata[any]{}, err
 	}
 
 	aiChatResponse, metadata, err := ad.serializeResponse(geminiResponse)
 
 	if err != nil {
-		return &inputport.AIChatResponse{}, &outputport.AIResposeMetadata[any]{}, err
+		return &in.AIChatResponse{}, &out.AIResposeMetadata[any]{}, err
 	}
 
 	return aiChatResponse, metadata, nil
@@ -134,22 +135,24 @@ func (ad *GeminiAdapter) parseChatHistory(chatHistory *entities.ChatHistory) []*
 		} else {
 			parsedHistoryElement.Role = geminiBotRole
 		}
+
+		formattedChatHistory = append(formattedChatHistory, parsedHistoryElement)
 	}
 
 	return formattedChatHistory
 }
 
-func (ad *GeminiAdapter) serializeResponse(res *genai.GenerateContentResponse) (*inputport.AIChatResponse, *outputport.AIResposeMetadata[any], error) {
+func (ad *GeminiAdapter) serializeResponse(res *genai.GenerateContentResponse) (*in.AIChatResponse, *out.AIResposeMetadata[any], error) {
 
 	if len(res.Candidates) == 0 {
-		return &inputport.AIChatResponse{}, &outputport.AIResposeMetadata[any]{}, errors.New("no candidates found in response")
+		return &in.AIChatResponse{}, &out.AIResposeMetadata[any]{}, errors.New("no candidates found in response")
 	}
 
 	candidate := res.Candidates[0]
 
 	if candidate.FinishReason != genai.FinishReasonStop {
 		_, err := ad.parseCandidateError(candidate)
-		return &inputport.AIChatResponse{}, &outputport.AIResposeMetadata[any]{}, err
+		return &in.AIChatResponse{}, &out.AIResposeMetadata[any]{}, err
 	}
 
 	finalMessage := ""
@@ -161,12 +164,12 @@ func (ad *GeminiAdapter) serializeResponse(res *genai.GenerateContentResponse) (
 	msg, err := entities.NewBotMessage(finalMessage)
 
 	if err != nil {
-		return nil, &outputport.AIResposeMetadata[any]{}, fmt.Errorf("error creating AI bot message: %w", err)
+		return nil, &out.AIResposeMetadata[any]{}, fmt.Errorf("error creating AI bot message: %w", err)
 	}
 
-	return &inputport.AIChatResponse{
+	return &in.AIChatResponse{
 			ChatMessage: msg,
-		}, &outputport.AIResposeMetadata[any]{
+		}, &out.AIResposeMetadata[any]{
 			TokensSpent: uint32(candidate.TokenCount),
 		}, nil
 }

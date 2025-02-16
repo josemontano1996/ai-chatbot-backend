@@ -9,9 +9,9 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/josemontano1996/ai-chatbot-backend/domain/entities"
-	inputport "github.com/josemontano1996/ai-chatbot-backend/domain/ports/input"
-	outputport "github.com/josemontano1996/ai-chatbot-backend/domain/ports/output"
+	"github.com/josemontano1996/ai-chatbot-backend/internal/entities"
+	"github.com/josemontano1996/ai-chatbot-backend/internal/ports/in"
+	"github.com/josemontano1996/ai-chatbot-backend/internal/ports/out"
 )
 
 const (
@@ -43,43 +43,43 @@ func NewOpenAIAdapter(config openAIConfig) *OpenAIAdapter {
 	}
 }
 
-func (ad *OpenAIAdapter) SendMessage(ctx context.Context, userMessage *entities.ChatMessage, prevHistory *entities.ChatHistory) (*inputport.AIChatResponse, *outputport.AIResposeMetadata[*OpenAIResponse], error) {
+func (ad *OpenAIAdapter) SendMessage(ctx context.Context, userMessage *entities.ChatMessage, prevHistory *entities.ChatHistory) (*in.AIChatResponse, *out.AIResposeMetadata[*OpenAIResponse], error) {
 	instructions := "You are a helpful chatbot"
 	prompts, err := ad.createPrompts(instructions, userMessage, prevHistory)
 
 	if err != nil {
-		return &inputport.AIChatResponse{}, &outputport.AIResposeMetadata[*OpenAIResponse]{}, err
+		return &in.AIChatResponse{}, &out.AIResposeMetadata[*OpenAIResponse]{}, err
 	}
 
 	req, err := ad.createRequestBody(prompts)
 
 	if err != nil {
-		return &inputport.AIChatResponse{}, &outputport.AIResposeMetadata[*OpenAIResponse]{}, err
+		return &in.AIChatResponse{}, &out.AIResposeMetadata[*OpenAIResponse]{}, err
 	}
 
 	resp, err := ad.client.Do(req)
 
 	if err != nil {
-		return &inputport.AIChatResponse{}, &outputport.AIResposeMetadata[*OpenAIResponse]{}, err
+		return &in.AIChatResponse{}, &out.AIResposeMetadata[*OpenAIResponse]{}, err
 	}
-	
+
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 
 	if err != nil {
-		return &inputport.AIChatResponse{}, &outputport.AIResposeMetadata[*OpenAIResponse]{}, err
+		return &in.AIChatResponse{}, &out.AIResposeMetadata[*OpenAIResponse]{}, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return &inputport.AIChatResponse{}, &outputport.AIResposeMetadata[*OpenAIResponse]{}, errors.New("could not get response from OpenAI")
+		return &in.AIChatResponse{}, &out.AIResposeMetadata[*OpenAIResponse]{}, errors.New("could not get response from OpenAI")
 	}
 
 	var openAIResponse OpenAIResponse
 	err = json.Unmarshal(body, &openAIResponse)
 
 	if err != nil {
-		return &inputport.AIChatResponse{}, &outputport.AIResposeMetadata[*OpenAIResponse]{}, fmt.Errorf("could not unmarshal response %d ", err)
+		return &in.AIChatResponse{}, &out.AIResposeMetadata[*OpenAIResponse]{}, fmt.Errorf("could not unmarshal response %d ", err)
 	}
 
 	return ad.serializeResponse(&openAIResponse)

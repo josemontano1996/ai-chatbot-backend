@@ -1,9 +1,9 @@
-package inputport
+package in
 
 import (
 	"context"
 
-	"github.com/josemontano1996/ai-chatbot-backend/domain/entities"
+	"github.com/josemontano1996/ai-chatbot-backend/internal/entities"
 )
 
 // ChatResponse encapsulates the domain's response to a chat request

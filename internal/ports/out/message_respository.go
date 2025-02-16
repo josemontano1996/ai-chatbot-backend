@@ -1,9 +1,9 @@
-package outputport
+package out
 
 import (
 	"context"
 
-	"github.com/josemontano1996/ai-chatbot-backend/domain/entities"
+	"github.com/josemontano1996/ai-chatbot-backend/internal/entities"
 )
 
 type ChatMessageRepository interface {

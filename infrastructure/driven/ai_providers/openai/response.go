@@ -3,9 +3,9 @@ package openaiadapter
 import (
 	"fmt"
 
-	"github.com/josemontano1996/ai-chatbot-backend/domain/entities"
-	inputport "github.com/josemontano1996/ai-chatbot-backend/domain/ports/input"
-	outputport "github.com/josemontano1996/ai-chatbot-backend/domain/ports/output"
+	"github.com/josemontano1996/ai-chatbot-backend/internal/entities"
+	"github.com/josemontano1996/ai-chatbot-backend/internal/ports/in"
+	"github.com/josemontano1996/ai-chatbot-backend/internal/ports/out"
 )
 
 // docs https://platform.openai.com/docs/api-reference/chat/object#chat/object-usage
@@ -51,7 +51,7 @@ type OpenAIResponse struct {
 	Usage     UsageObject     `json:"usage" binding:"required"`
 }
 
-func (s *OpenAIAdapter) serializeResponse(data *OpenAIResponse) (*inputport.AIChatResponse, *outputport.AIResposeMetadata[*OpenAIResponse], error) { // Use inputport.ChatResponse
+func (s *OpenAIAdapter) serializeResponse(data *OpenAIResponse) (*in.AIChatResponse, *out.AIResposeMetadata[*OpenAIResponse], error) { // Use in.ChatResponse
 	totalTokensSpend := data.Usage.TotalTokens
 	choice := data.Choices[0]
 	message := choice.Message.Content
@@ -63,15 +63,15 @@ func (s *OpenAIAdapter) serializeResponse(data *OpenAIResponse) (*inputport.AICh
 	msg, err := entities.NewBotMessage(message)
 
 	if err != nil {
-		return &inputport.AIChatResponse{}, &outputport.AIResposeMetadata[*OpenAIResponse]{Metadata: data}, fmt.Errorf("error creating AI bot message: %w", err)
+		return &in.AIChatResponse{}, &out.AIResposeMetadata[*OpenAIResponse]{Metadata: data}, fmt.Errorf("error creating AI bot message: %w", err)
 	}
 
-	metadata := &outputport.AIResposeMetadata[*OpenAIResponse]{
+	metadata := &out.AIResposeMetadata[*OpenAIResponse]{
 		TokensSpent: totalTokensSpend,
 		Metadata:    data,
 	}
 
-	return &inputport.AIChatResponse{
+	return &in.AIChatResponse{
 		ChatMessage: msg,
 	}, metadata, nil
 }

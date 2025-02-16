@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/josemontano1996/ai-chatbot-backend/domain/entities"
+	"github.com/josemontano1996/ai-chatbot-backend/internal/entities"
 	"github.com/redis/go-redis/v9"
 )
 

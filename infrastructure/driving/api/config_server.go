@@ -1,4 +1,4 @@
-package server
+package api
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/josemontano1996/ai-chatbot-backend/infrastructure/driving/api"
+	controller "github.com/josemontano1996/ai-chatbot-backend/infrastructure/driving/api/controllers"
 )
 
 type Server struct {
@@ -24,7 +24,7 @@ func NewServer() *Server {
 	}
 }
 
-func (s *Server) RegisterRoutes(AIController *api.AIController) {
+func (s *Server) RegisterRoutes(AIController *controller.AIController) {
 
 	s.router.GET("/health", func(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, gin.H{"status": "healthy"})
