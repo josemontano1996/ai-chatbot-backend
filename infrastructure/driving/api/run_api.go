@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"log"
+	"time"
 
 	geminiadapter "github.com/josemontano1996/ai-chatbot-backend/infrastructure/driven/ai_providers/gemini"
 	repository "github.com/josemontano1996/ai-chatbot-backend/infrastructure/driven/respository/redis"
@@ -19,8 +20,9 @@ func RunRestApi() {
 	}
 
 	// Infraestructure layer setup
-	redisConfig := repository.NewRedisConfig(config.RedisAddress, config.RedisPassword, config.RedisDB)
+	redisConfig := repository.NewRedisConfig(config.RedisAddress, config.RedisPassword, config.RedisDB, 30*time.Minute)
 	redisRepo := repository.NewRedisRepository(redisConfig)
+	
 	defer redisRepo.Close()
 
 	geminiConfig, err := geminiadapter.NewGeminiConfig(config.GeminiApiKey, geminiadapter.Gemini15FlashModelName, int32(config.GeminiMaxTokens))

@@ -5,19 +5,23 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"time"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/josemontano1996/ai-chatbot-backend/internal/entities"
 	"github.com/redis/go-redis/v9"
 )
 
 type RedisMessageRepository struct {
 	client *redis.Client
+	config *redisConfig
 }
 
 type redisConfig struct {
-	Addr     string
-	Password string
-	DB       int
+	Addr               string        `json:"addr" binding:"required"`
+	Password           string        `json:"password" binding:"required"`
+	DB                 int           `json:"db" binding:"required"`
+	ExpirationDuration time.Duration `json:"expiration_duration" binding:"required"`
 }
 
 func NewRedisRepository(config *redisConfig) *RedisMessageRepository {
@@ -32,12 +36,23 @@ func NewRedisRepository(config *redisConfig) *RedisMessageRepository {
 	}
 }
 
-func NewRedisConfig(address string, password string, db int) *redisConfig {
-	return &redisConfig{
-		Addr:     address,
-		Password: password,
-		DB:       db,
+func NewRedisConfig(address string, password string, db int, expirationDuration time.Duration) *redisConfig {
+	config := &redisConfig{
+		Addr:               address,
+		Password:           password,
+		DB:                 db,
+		ExpirationDuration: expirationDuration,
 	}
+
+	validate := validator.New()
+
+	err := validate.Struct(config)
+
+	if err != nil {
+		log.Fatalf("Error validating Redis config: %v", err)
+	}
+	return config
+
 }
 
 func (r *RedisMessageRepository) GetChatHistory(ctx context.Context, key string) (*entities.ChatHistory, error) {
@@ -59,8 +74,13 @@ func (r *RedisMessageRepository) SaveMessage(ctx context.Context, key string, us
 	if err != nil {
 		return fmt.Errorf("error marshaling user message to JSON: %w", err)
 	}
+	pipe := r.client.Pipeline()
 
-	_, err = r.client.RPush(ctx, key, userMsgJSON).Result()
+	pipe.RPush(ctx, key, userMsgJSON)
+
+	pipe.Expire(ctx, key, r.config.ExpirationDuration)
+
+	_, err = pipe.Exec(ctx)
 
 	if err != nil {
 		return fmt.Errorf("error pushing responses to Redis: %w", err)
@@ -80,7 +100,14 @@ func (r *RedisMessageRepository) SaveMessages(ctx context.Context, key string, m
 	}
 
 	if len(jsonMessages) > 0 {
-		_, err := r.client.RPush(ctx, key, jsonMessages...).Result()
+		pipe := r.client.Pipeline()
+
+		pipe.RPush(ctx, key, jsonMessages...)
+
+		pipe.Expire(ctx, key, r.config.ExpirationDuration)
+
+		_, err := pipe.Exec(ctx)
+
 		if err != nil {
 			return fmt.Errorf("error pushing messages to Redis: %w", err)
 		}
@@ -98,3 +125,4 @@ func (r *RedisMessageRepository) Close() error {
 	}
 	return nil
 }
+

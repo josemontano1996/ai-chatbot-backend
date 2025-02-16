@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 
-	"github.com/josemontano1996/ai-chatbot-backend/infrastructure/driving/ws"
+	chatws "github.com/josemontano1996/ai-chatbot-backend/infrastructure/driving/ws/chat"
 	"github.com/josemontano1996/ai-chatbot-backend/internal/entities"
 	"github.com/josemontano1996/ai-chatbot-backend/internal/ports/in"
 	"github.com/josemontano1996/ai-chatbot-backend/internal/ports/out"
@@ -18,24 +18,28 @@ import (
 type AIController struct {
 	aiChatUseCase         in.AIChatUseCase
 	chatMessageRepository out.ChatMessageRepository
+	ws                    chatws.AIChatWSClientInterface
 }
 
-func NewAIController(aiChatUseCase in.AIChatUseCase, chatMessageRespository out.ChatMessageRepository) *AIController {
+func NewAIController(aiChatUseCase in.AIChatUseCase, chatMessageRespository out.ChatMessageRepository, chatWebsocket chatws.AIChatWSClientInterface) *AIController {
 	return &AIController{
 		aiChatUseCase:         aiChatUseCase,
 		chatMessageRepository: chatMessageRespository,
+		ws:                    chatWebsocket,
 	}
 }
 
 func (c *AIController) ChatWithAI(ctx *gin.Context) {
 	expirationTime := 60 * time.Minute
 	userID := uuid.New()
+
+	// user will come from the ctx field from the middleware
 	user := &entities.User{
 		ID:   userID,
 		Name: "Federico",
 	}
 
-	wsClient, err := ws.NewWSClient(ctx, userID, expirationTime)
+	wsClient, err := c.ws.NewWSClient(ctx, userID, expirationTime)
 
 	if err != nil {
 		log.Println("Error creating new WS client:", err)

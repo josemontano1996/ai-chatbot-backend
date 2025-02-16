@@ -3,24 +3,23 @@ package entities
 import (
 	"encoding/json"
 	"fmt"
-
-	"github.com/go-playground/validator/v10"
 )
 
 type ChatMessageCode int8
 
 const (
-	UserChatMessageCode  ChatMessageCode = 1
-	AIBotChatMessageCode ChatMessageCode = 2
-	// Chat messages should never display system information
-	// AISystemChatMessageCode ChatMessageCode = 3
+	UserChatMessageCode     ChatMessageCode = 1
+	AIBotChatMessageCode    ChatMessageCode = 2
+	AISystemChatMessageCode ChatMessageCode = 3
 )
 
 var AllowedChatMessageCodes = []ChatMessageCode{UserChatMessageCode, AIBotChatMessageCode}
 
+type ChatHistory []ChatMessage
+
 type ChatMessage struct {
-	Code    ChatMessageCode `json:"code" validate:"required,oneof=1 2"`
-	Message string          `json:"message" binding:"required" validate:"required"`
+	Code    ChatMessageCode
+	Message string
 }
 
 func newMessage(code ChatMessageCode, message string) (*ChatMessage, error) {
@@ -29,20 +28,15 @@ func newMessage(code ChatMessageCode, message string) (*ChatMessage, error) {
 		return nil, err
 	}
 
-	chatMessage := ChatMessage{
-		Code:    code,
-		Message: message}
-
-	validator := validator.New()
-
-	err := validator.Struct(chatMessage)
-
-	if err != nil {
-		err := fmt.Errorf("invalid message structure: %d", err)
+	if message == "" {
+		err := fmt.Errorf("message cannot be empty")
 		return nil, err
 	}
 
-	return &chatMessage, nil
+	return &ChatMessage{
+		Code:    code,
+		Message: message,
+	}, nil
 }
 
 func NewUserMessage(message string) (*ChatMessage, error) {
@@ -50,6 +44,9 @@ func NewUserMessage(message string) (*ChatMessage, error) {
 }
 func NewBotMessage(message string) (*ChatMessage, error) {
 	return newMessage(AIBotChatMessageCode, message)
+}
+func NewSystemMessage(message string) (*ChatMessage, error) {
+	return newMessage(AISystemChatMessageCode, message)
 }
 
 func isValidMessageCode(code ChatMessageCode) bool {
@@ -62,7 +59,6 @@ func isValidMessageCode(code ChatMessageCode) bool {
 }
 
 // Chat history should never contain system messages
-type ChatHistory []ChatMessage
 
 func ParseArrayToChatHistory(array []string) (*ChatHistory, error) {
 	messageHistory := make(ChatHistory, 0, len(array))
