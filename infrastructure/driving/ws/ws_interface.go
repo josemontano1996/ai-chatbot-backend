@@ -9,7 +9,8 @@ import (
 )
 
 type WSPayload[T any] struct {
-	Payload T `json:"payload" validate:"required"`
+	Payload T      `json:"payload" validate:"required"`
+	Error   string `json:"error"`
 }
 
 type WSConfig struct {
@@ -23,15 +24,17 @@ type WSConfig struct {
 type WSClientInterface[T any] interface {
 	ParseIncomingRequest() (*WSPayload[T], error)
 	SendResposeToClient(payload *WSPayload[T]) error
-	NewPayload(T) *WSPayload[T]
+	NewPayload(T, error) *WSPayload[T]
 	Connect(ctx *gin.Context) error
 	Disconnect() error
+	SendErrorToClient(err error) error
 }
 
 type AIChatWSClientInterface interface {
-	Connect(ctx *gin.Context) error
 	SendChatMessage(message *dto.ChatMessageDTO) error
 	ReadChatMessage() (*dto.ChatMessageDTO, error)
+	SendErrorToClient(err error) error
+	Connect(ctx *gin.Context) error
 	Disconnect() error
 }
 

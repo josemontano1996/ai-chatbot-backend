@@ -41,13 +41,17 @@ func (c *AIChatWSClient) SendChatMessage(message *dto.ChatMessageDTO) error {
 	if message == nil {
 		return errors.New("nil pointer for message")
 	}
-	payload := c.client.NewPayload(*message)
+	payload := c.client.NewPayload(*message, nil)
 	return c.client.SendResposeToClient(payload)
 }
+
 
 func (c *AIChatWSClient) Connect(ctx *gin.Context) error {
 	return c.client.Connect(ctx)
 }
 func (c *AIChatWSClient) Disconnect() error {
 	return c.client.Disconnect()
+}
+func (c *AIChatWSClient) SendErrorToClient(err error) error {
+	return c.client.SendErrorToClient(err)
 }

@@ -3,7 +3,6 @@ package controller
 import (
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -48,37 +47,36 @@ func (c *AIController) ChatWithAI(ctx *gin.Context) {
 
 	defer c.ws.Disconnect()
 
-	log.Println("New WS client created", time.Now())
-
 	for {
 		userMessagePayload, err := c.ws.ReadChatMessage()
 
 		if err != nil {
 			if websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseNormalClosure, websocket.CloseNoStatusReceived) {
-				log.Println("WebSocket closed by client or server:", err) // Handle normal close scenarios
-			} else {
-				log.Println("Error parsing user message:", err) // Log unexpected errors
+				log.Println("WebSocket closed by client or server:", err)
+				break
 			}
-			break // Exit loop on read error
+
+			c.ws.SendErrorToClient(err) // Log unexpected errors
+			continue
 		}
-		log.Println("User message received:", userMessagePayload.Message)
+
 		aiResponse, err := c.aiChatUseCase.SendChatMessage(ctx, user.ID.String(), userMessagePayload.Message)
 
 		if err != nil {
-			log.Println("Error sending message to AI:", err)
-			break
+			c.ws.SendErrorToClient(err)
+			continue
 		}
 		log.Println("AI response received:", aiResponse.ChatMessage.Message)
 		chatMessageDTO, err := dto.ChatMessageEntityToDTO(aiResponse.ChatMessage)
 
 		if err != nil {
-			log.Println("Error converting entity to DTO:", err)
+			c.ws.SendErrorToClient(err)
 		} else {
 			err = c.ws.SendChatMessage(chatMessageDTO)
 
 			if err != nil {
-				log.Println("Error writing response to WS client:", err)
-				break
+				c.ws.SendErrorToClient(err)
+				continue
 			}
 		}
 	}
