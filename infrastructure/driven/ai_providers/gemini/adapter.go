@@ -92,7 +92,7 @@ func (ad *GeminiAdapter) SendMessage(ctx context.Context, userMessage *entities.
 
 	ad.model.SystemInstruction = &genai.Content{
 		Role:  geminiSystemRole,
-		Parts: []genai.Part{genai.Text("You are a helpful assistant, help the user with their enquiries")},
+		Parts: []genai.Part{genai.Text("You are a helpful assistant, help the user with their enquiries. Respond with pure html to structure your response, the whole response should be inside a div, do not create anything else apart from that div and do not denote that is html, so do not use ```html ``` in the message. If response is simple (only requires some lines of text) do not use h tags only. If you need a more structured response, use h3 tags for main titles, and 4 and h5 for subtitles. Use br for line breaks.")},
 	}
 
 	chatSession := ad.model.StartChat()
