@@ -7,8 +7,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/josemontano1996/ai-chatbot-backend/internal/entities"
+	"github.com/josemontano1996/ai-chatbot-backend/pkg/utils"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -24,7 +24,13 @@ type redisConfig struct {
 	ExpirationDuration time.Duration `json:"expiration_duration" binding:"required"`
 }
 
-func NewRedisRepository(config *redisConfig) *RedisMessageRepository {
+func NewRedisRepository(config *redisConfig) (*RedisMessageRepository, error) {
+	err := utils.ValidateStruct(config)
+
+	if err != nil {
+		return nil, err
+	}
+	
 	client := redis.NewClient(&redis.Options{
 		Addr:     config.Addr,
 		Password: config.Password,
@@ -33,10 +39,10 @@ func NewRedisRepository(config *redisConfig) *RedisMessageRepository {
 
 	return &RedisMessageRepository{
 		client: client,
-	}
+	}, nil
 }
 
-func NewRedisConfig(address string, password string, db int, expirationDuration time.Duration) *redisConfig {
+func NewRedisConfig(address string, password string, db int, expirationDuration time.Duration) (*redisConfig, error) {
 	config := &redisConfig{
 		Addr:               address,
 		Password:           password,
@@ -44,14 +50,12 @@ func NewRedisConfig(address string, password string, db int, expirationDuration 
 		ExpirationDuration: expirationDuration,
 	}
 
-	validate := validator.New()
-
-	err := validate.Struct(config)
+	err := utils.ValidateStruct(config)
 
 	if err != nil {
-		log.Fatalf("Error validating Redis config: %v", err)
+		return nil, err
 	}
-	return config
+	return config, nil
 
 }
 
@@ -125,4 +129,3 @@ func (r *RedisMessageRepository) Close() error {
 	}
 	return nil
 }
-

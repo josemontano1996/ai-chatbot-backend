@@ -9,7 +9,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 
-	chatws "github.com/josemontano1996/ai-chatbot-backend/infrastructure/driving/ws/chat"
+	"github.com/josemontano1996/ai-chatbot-backend/infrastructure/driving/ws"
+	"github.com/josemontano1996/ai-chatbot-backend/internal/dto"
 	"github.com/josemontano1996/ai-chatbot-backend/internal/entities"
 	"github.com/josemontano1996/ai-chatbot-backend/internal/ports/in"
 	"github.com/josemontano1996/ai-chatbot-backend/internal/ports/out"
@@ -18,10 +19,10 @@ import (
 type AIController struct {
 	aiChatUseCase         in.AIChatUseCase
 	chatMessageRepository out.ChatMessageRepository
-	ws                    chatws.AIChatWSClientInterface
+	ws                    ws.AIChatWSClientInterface
 }
 
-func NewAIController(aiChatUseCase in.AIChatUseCase, chatMessageRespository out.ChatMessageRepository, chatWebsocket chatws.AIChatWSClientInterface) *AIController {
+func NewAIController(aiChatUseCase in.AIChatUseCase, chatMessageRespository out.ChatMessageRepository, chatWebsocket ws.AIChatWSClientInterface) *AIController {
 	return &AIController{
 		aiChatUseCase:         aiChatUseCase,
 		chatMessageRepository: chatMessageRespository,
@@ -30,28 +31,27 @@ func NewAIController(aiChatUseCase in.AIChatUseCase, chatMessageRespository out.
 }
 
 func (c *AIController) ChatWithAI(ctx *gin.Context) {
-	expirationTime := 60 * time.Minute
-	userID := uuid.New()
-
 	// user will come from the ctx field from the middleware
+	userID := uuid.New()
 	user := &entities.User{
 		ID:   userID,
 		Name: "Federico",
 	}
 
-	wsClient, err := c.ws.NewWSClient(ctx, userID, expirationTime)
+	err := c.ws.Connect(ctx)
 
 	if err != nil {
-		log.Println("Error creating new WS client:", err)
+		log.Println("Error connecting WS:", err)
 		ctx.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
-	defer wsClient.Conn.Close()
+
+	defer c.ws.Disconnect()
 
 	log.Println("New WS client created", time.Now())
 
 	for {
-		userMessagePayload, err := wsClient.ParseIncomingRequest()
+		userMessagePayload, err := c.ws.ReadChatMessage()
 
 		if err != nil {
 			if websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseNormalClosure, websocket.CloseNoStatusReceived) {
@@ -62,38 +62,24 @@ func (c *AIController) ChatWithAI(ctx *gin.Context) {
 			break // Exit loop on read error
 		}
 
-		userMessage, err := entities.NewUserMessage(userMessagePayload.Message)
+		aiResponse, err := c.aiChatUseCase.SendChatMessage(ctx, user.ID.String(), userMessagePayload.Message)
 
 		if err != nil {
-			log.Println("Error creating new user message:", err)
+			log.Println("Error sending message to AI:", err)
 			break
 		}
 
-		chatHistory, err := c.chatMessageRepository.GetChatHistory(ctx, userID.String())
+		chatMessageDTO, err := dto.ChatMessageEntityToDTO(aiResponse.ChatMessage)
 
 		if err != nil {
-			log.Println("Error getting chat history from repository:", err)
-			break
-		}
+			log.Println("Error converting entity to DTO:", err)
+		} else {
+			err = c.ws.SendChatMessage(chatMessageDTO)
 
-		chatResponse, err := c.aiChatUseCase.SendChatMessage(ctx, user, userMessage, chatHistory)
-
-		if err != nil {
-			log.Println("Error sending chat message to AI:", err)
-			break
-		}
-
-		err = c.chatMessageRepository.SaveMessages(ctx, userID.String(), userMessage, chatResponse.ChatMessage)
-
-		if err != nil {
-			log.Println("Error saving messages to repository:", err)
-		}
-
-		err = wsClient.Conn.WriteJSON(chatResponse.ChatMessage)
-
-		if err != nil {
-			log.Println("Error writing response to WS client:", err)
-			break
+			if err != nil {
+				log.Println("Error writing response to WS client:", err)
+				break
+			}
 		}
 	}
 

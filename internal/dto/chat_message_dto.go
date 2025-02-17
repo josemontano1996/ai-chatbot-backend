@@ -1,26 +1,28 @@
 package dto
 
 import (
-	"github.com/go-playground/validator/v10"
+	"errors"
+
 	"github.com/josemontano1996/ai-chatbot-backend/internal/entities"
+	"github.com/josemontano1996/ai-chatbot-backend/pkg/utils"
 )
 
 type ChatHistoryDTO []ChatMessageDTO
 
 type ChatMessageDTO struct {
+	UserId  string                   `json:"userId"`
 	Code    entities.ChatMessageCode `json:"code" validate:"required,oneof=1 2 3" binding:"required,oneof=1 2 3"`
 	Message string                   `json:"message" binding:"required" validate:"required"`
 }
 
-func NewChatMessageDTO(code entities.ChatMessageCode, message string) (*ChatMessageDTO, error) {
+func NewChatMessageDTO(code entities.ChatMessageCode, message string, userId string) (*ChatMessageDTO, error) {
 	dto := ChatMessageDTO{
 		Code:    code,
 		Message: message,
+		UserId:  userId,
 	}
 
-	v := validator.New()
-
-	err := v.Struct(dto)
+	err := utils.ValidateStruct(dto)
 
 	if err != nil {
 		return nil, err
@@ -30,10 +32,6 @@ func NewChatMessageDTO(code entities.ChatMessageCode, message string) (*ChatMess
 		Code:    code,
 		Message: message,
 	}, nil
-}
-
-func NewUserChatMessageDTO(message string) (*ChatMessageDTO, error) {
-	return NewChatMessageDTO(entities.UserChatMessageCode, message)
 }
 
 func (dto *ChatMessageDTO) ToEntity() *entities.ChatMessage {
@@ -46,8 +44,8 @@ func (dto *ChatMessageDTO) ToEntity() *entities.ChatMessage {
 func ChatMessageEntityToDTO(entity *entities.ChatMessage) (*ChatMessageDTO, error) {
 
 	if entity.Code == entities.AISystemChatMessageCode {
-		return &ChatMessageDTO{}, nil
+		return nil, errors.New("cannot convert system message to DTO")
 	}
 
-	return NewChatMessageDTO(entity.Code, entity.Message)
+	return NewChatMessageDTO(entity.Code, entity.Message, entity.UserId)
 }

@@ -20,20 +20,31 @@ func NewAIChatUseCase[T any](aiProvider out.AIProvider[T], messageRepo out.ChatM
 	}
 }
 
-func (uc *AIChatUseCase[T]) SendChatMessage(ctx context.Context, user *entities.User, userMessage *entities.ChatMessage, history *entities.ChatHistory) (*in.AIChatResponse, error) {
+func (uc *AIChatUseCase[T]) SendChatMessage(ctx context.Context, userId string, userMessage string) (*in.AIChatResponse, error) {
+	userMessageEntity, err := entities.NewUserMessage(userId, userMessage)
+	if err != nil {
+		return nil, err
+	}
 
-	aiResponse, _, err := uc.aiProvider.SendMessage(ctx, userMessage, history)
+	//get history
+	chatHistory, err := uc.messageRepo.GetChatHistory(ctx, userId)
 
 	if err != nil {
-		return &in.AIChatResponse{}, err
+		return nil, err
+	}
+
+	aiResponse, _, err := uc.aiProvider.SendMessage(ctx, userMessageEntity, chatHistory)
+
+	if err != nil {
+		return nil, err
 	}
 
 	// TODO: Implement logic to substract tokens from user's account
 	// metadata.TokensSpent
-	err = uc.messageRepo.SaveMessages(ctx, user.ID.String(), userMessage, aiResponse.ChatMessage)
+	err = uc.messageRepo.SaveMessages(ctx, userId, userMessageEntity, aiResponse.ChatMessage)
 
 	if err != nil {
-		return &in.AIChatResponse{}, err
+		return nil, err
 	}
 
 	return aiResponse, nil

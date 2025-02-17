@@ -18,13 +18,20 @@ var AllowedChatMessageCodes = []ChatMessageCode{UserChatMessageCode, AIBotChatMe
 type ChatHistory []ChatMessage
 
 type ChatMessage struct {
+	UserId  string
 	Code    ChatMessageCode
 	Message string
 }
 
-func newMessage(code ChatMessageCode, message string) (*ChatMessage, error) {
+func newMessage(code ChatMessageCode, message string, userId string) (*ChatMessage, error) {
+
 	if !isValidMessageCode(code) {
 		err := fmt.Errorf("invalid message code: %v, allowed codes: %v", code, AllowedChatMessageCodes)
+		return nil, err
+	}
+
+	if code == UserChatMessageCode && userId == "" {
+		err := fmt.Errorf("user id cannot be empty")
 		return nil, err
 	}
 
@@ -36,17 +43,18 @@ func newMessage(code ChatMessageCode, message string) (*ChatMessage, error) {
 	return &ChatMessage{
 		Code:    code,
 		Message: message,
+		UserId:  userId,
 	}, nil
 }
 
-func NewUserMessage(message string) (*ChatMessage, error) {
-	return newMessage(UserChatMessageCode, message)
+func NewUserMessage(userId string, message string) (*ChatMessage, error) {
+	return newMessage(UserChatMessageCode, message, userId)
 }
 func NewBotMessage(message string) (*ChatMessage, error) {
-	return newMessage(AIBotChatMessageCode, message)
+	return newMessage(AIBotChatMessageCode, message, "")
 }
 func NewSystemMessage(message string) (*ChatMessage, error) {
-	return newMessage(AISystemChatMessageCode, message)
+	return newMessage(AISystemChatMessageCode, message, "")
 }
 
 func isValidMessageCode(code ChatMessageCode) bool {

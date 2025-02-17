@@ -3,21 +3,26 @@ package chatws
 import (
 	"errors"
 
+	"github.com/gin-gonic/gin"
 	"github.com/josemontano1996/ai-chatbot-backend/infrastructure/driving/ws"
 	"github.com/josemontano1996/ai-chatbot-backend/internal/dto"
 )
-
-
-
 
 type AIChatWSClient struct {
 	client ws.WSClientInterface[dto.ChatMessageDTO]
 }
 
-func NewAIChatWSClient() ws.AIChatWSClientInterface {
-	return &AIChatWSClient{
-		client: ws.NewGorillaWSClient[dto.ChatMessageDTO](),
+func NewAIChatWSClient(config ws.WSConfig) (ws.AIChatWSClientInterface, error) {
+
+	client, err := ws.NewGorillaWSClient[dto.ChatMessageDTO](config)
+
+	if err != nil {
+		return nil, err
 	}
+
+	return &AIChatWSClient{
+		client: client,
+	}, nil
 }
 
 func (c *AIChatWSClient) ReadChatMessage() (*dto.ChatMessageDTO, error) {
@@ -40,8 +45,8 @@ func (c *AIChatWSClient) SendChatMessage(message *dto.ChatMessageDTO) error {
 	return c.client.SendResposeToClient(payload)
 }
 
-func (c *AIChatWSClient) Connect(config ws.WSConfig) error {
-	return c.client.Connect(config)
+func (c *AIChatWSClient) Connect(ctx *gin.Context) error {
+	return c.client.Connect(ctx)
 }
 func (c *AIChatWSClient) Disconnect() error {
 	return c.client.Disconnect()

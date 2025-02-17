@@ -13,5 +13,5 @@ type AIChatResponse struct {
 
 // ChatService defines the use cases related to chat functionality
 type AIChatUseCase interface {
-	SendChatMessage(ctx context.Context, user *entities.User, userMessage *entities.ChatMessage, history *entities.ChatHistory) (*AIChatResponse, error)
+	SendChatMessage(ctx context.Context, userId string, userMessage string) (*AIChatResponse, error)
 }

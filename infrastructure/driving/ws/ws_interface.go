@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/josemontano1996/ai-chatbot-backend/internal/dto"
+	"github.com/josemontano1996/ai-chatbot-backend/pkg/utils"
 )
 
 type WSPayload[T any] struct {
@@ -12,24 +13,39 @@ type WSPayload[T any] struct {
 }
 
 type WSConfig struct {
-	Ctx             *gin.Context
-	ExpirationTime  time.Duration
-	ReadBufferSize  int
-	WriteBufferSize int
-	CheckOrigin     func(...any) bool
+	Ctx             *gin.Context      `binding:"omitempty"`
+	ExpirationTime  time.Duration     `binding:"required"`
+	ReadBufferSize  int               `binding:"required"`
+	WriteBufferSize int               `binding:"required"`
+	CheckOrigin     func(...any) bool `binding:"required"`
 }
 
 type WSClientInterface[T any] interface {
 	ParseIncomingRequest() (*WSPayload[T], error)
 	SendResposeToClient(payload *WSPayload[T]) error
 	NewPayload(T) *WSPayload[T]
-	Connect(config WSConfig) error
+	Connect(ctx *gin.Context) error
 	Disconnect() error
 }
 
 type AIChatWSClientInterface interface {
-	Connect(config WSConfig) error
+	Connect(ctx *gin.Context) error
 	SendChatMessage(message *dto.ChatMessageDTO) error
 	ReadChatMessage() (*dto.ChatMessageDTO, error)
 	Disconnect() error
+}
+
+func NewWSConfig(readBufferSize int, writeBufferSize int, expiration time.Duration) (*WSConfig, error) {
+	config := &WSConfig{
+		ExpirationTime:  expiration,
+		ReadBufferSize:  readBufferSize,
+		WriteBufferSize: writeBufferSize,
+		CheckOrigin: func(...any) bool {
+			return true
+		},
+	}
+
+	err := utils.ValidateStruct(config)
+
+	return config, err
 }
