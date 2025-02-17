@@ -7,21 +7,14 @@ import (
 	"github.com/josemontano1996/ai-chatbot-backend/internal/dto"
 )
 
-//	type ChatMessagePayload struct {
-//		Content dto.ChatMessageDTO `json:"content" validate:"required"`
-//	}
-type AIChatWSClientInterface interface {
-	Connect(config ws.WSConfig) error
-	SendChatMessage(message *dto.ChatMessageDTO) error
-	ReadChatMessage() (*dto.ChatMessageDTO, error)
-	Disconnect() error
-}
+
+
 
 type AIChatWSClient struct {
 	client ws.WSClientInterface[dto.ChatMessageDTO]
 }
 
-func NewAIChatWSClient() AIChatWSClientInterface {
+func NewAIChatWSClient() ws.AIChatWSClientInterface {
 	return &AIChatWSClient{
 		client: ws.NewGorillaWSClient[dto.ChatMessageDTO](),
 	}
