@@ -30,7 +30,7 @@ func NewRedisRepository(config *redisConfig) (*RedisMessageRepository, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	client := redis.NewClient(&redis.Options{
 		Addr:     config.Addr,
 		Password: config.Password,
@@ -39,6 +39,7 @@ func NewRedisRepository(config *redisConfig) (*RedisMessageRepository, error) {
 
 	return &RedisMessageRepository{
 		client: client,
+		config: config,
 	}, nil
 }
 
@@ -74,7 +75,6 @@ func (r *RedisMessageRepository) GetChatHistory(ctx context.Context, key string)
 
 func (r *RedisMessageRepository) SaveMessage(ctx context.Context, key string, userMsg *entities.ChatMessage) error {
 	userMsgJSON, err := json.Marshal(userMsg)
-
 	if err != nil {
 		return fmt.Errorf("error marshaling user message to JSON: %w", err)
 	}

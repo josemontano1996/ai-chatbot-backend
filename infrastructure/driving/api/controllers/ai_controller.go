@@ -61,14 +61,14 @@ func (c *AIController) ChatWithAI(ctx *gin.Context) {
 			}
 			break // Exit loop on read error
 		}
-
+		log.Println("User message received:", userMessagePayload.Message)
 		aiResponse, err := c.aiChatUseCase.SendChatMessage(ctx, user.ID.String(), userMessagePayload.Message)
 
 		if err != nil {
 			log.Println("Error sending message to AI:", err)
 			break
 		}
-
+		log.Println("AI response received:", aiResponse.ChatMessage.Message)
 		chatMessageDTO, err := dto.ChatMessageEntityToDTO(aiResponse.ChatMessage)
 
 		if err != nil {
