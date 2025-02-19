@@ -9,6 +9,8 @@ services:
       - REDIS_PASSWORD=password
     command:
       ['redis-server', '--requirepass', 'password', '--maxmemory', '512mb']
+    networks:
+      - app
   postgres:
     image: postgres:17.3-alpine3.21
     restart: always
@@ -20,12 +22,17 @@ services:
       - POSTGRES_DB=ai_chatbot
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app
   adminer:
     image: adminer
     restart: always
     ports:
       - 8080:8080
+    networks:
+      - app
 volumes:
   redis_data:
   postgres_data:
-
+networks:
+  app:
