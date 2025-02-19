@@ -5,6 +5,6 @@ import (
 )
 
 type PasetoService interface {
-	GenerateToken(user *entities.User) (string, error)
+	GenerateToken(userId string) (string, error)
 	ValidateToken(token string) (*entities.User, error)
 }
