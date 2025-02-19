@@ -1,6 +1,6 @@
 services:
   redis:
-    image: 'redis:latest'
+    image: redis:latest
     ports:
       - '6379:6379'
     volumes:
@@ -9,5 +9,23 @@ services:
       - REDIS_PASSWORD=password
     command:
       ['redis-server', '--requirepass', 'password', '--maxmemory', '512mb']
+  postgres:
+    image: postgres:17.3-alpine3.21
+    restart: always
+    ports:
+      - '5432:5432'
+    environment:
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=ai_chatbot
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
 volumes:
   redis_data:
+  postgres_data:
+
