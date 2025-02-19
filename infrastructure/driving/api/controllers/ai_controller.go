@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 
 	"github.com/josemontano1996/ai-chatbot-backend/infrastructure/driving/ws"
@@ -31,10 +30,9 @@ func NewAIController(aiChatUseCase in.AIChatUseCase, chatMessageRespository out.
 
 func (c *AIController) ChatWithAI(ctx *gin.Context) {
 	// user will come from the ctx field from the middleware
-	userID := uuid.New()
+	userID := "someid"
 	user := &entities.User{
-		ID:   userID,
-		Name: "Federico",
+		ID: userID,
 	}
 
 	err := c.ws.Connect(ctx)
@@ -60,7 +58,7 @@ func (c *AIController) ChatWithAI(ctx *gin.Context) {
 			continue
 		}
 
-		aiResponse, err := c.aiChatUseCase.SendChatMessage(ctx, user.ID.String(), userMessagePayload.Message)
+		aiResponse, err := c.aiChatUseCase.SendChatMessage(ctx, user.ID, userMessagePayload.Message)
 
 		if err != nil {
 			c.ws.SendErrorToClient(err)
