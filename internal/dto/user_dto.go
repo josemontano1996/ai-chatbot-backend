@@ -6,7 +6,7 @@ import (
 )
 
 type User struct {
-	ID       string `json:"id" validate:"required" binding:"required"`
+	ID       string `json:"id"`
 	Email    string `json:"email" validate:"required,email" bindig:"required,email"`
 	Password string `json:"password"`
 }

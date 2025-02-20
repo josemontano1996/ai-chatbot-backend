@@ -27,19 +27,21 @@ func NewServer() *Server {
 	}
 }
 
-func (s *Server) RegisterRoutes(AuthUseCases *in.AuthUseCase, AuthController *controller.AuthController, AIController *controller.AIController) {
+func (s *Server) RegisterRoutes(authUseCases *in.AuthUseCase, authController *controller.AuthController, AIController *controller.AIController) {
 	apiRoutes := s.router.Group("/api")
 	{
 		apiRoutes.GET("/health", func(ctx *gin.Context) {
 			ctx.JSON(http.StatusOK, gin.H{"status": "healthy"})
 		})
+		
+		apiRoutes.POST("/register", authController.RegisterUser)
 
 		privateGroup := apiRoutes.Group("/private")
-		privateGroup.Use(middleware.AuthMiddleware(*AuthUseCases))
+		privateGroup.Use(middleware.AuthMiddleware(*authUseCases))
 		{
 		}
-
-		s.router.GET("/chat", AIController.ChatWithAI)
+		//TODO: put /chat in privarte group middeware
+		privateGroup.GET("/chat", AIController.ChatWithAI)
 	}
 
 }
