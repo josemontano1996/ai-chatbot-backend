@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -11,6 +12,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	controller "github.com/josemontano1996/ai-chatbot-backend/infrastructure/driving/api/controllers"
+	"github.com/josemontano1996/ai-chatbot-backend/infrastructure/driving/api/middleware"
+	"github.com/josemontano1996/ai-chatbot-backend/internal/ports/in"
 )
 
 type Server struct {
@@ -24,13 +27,21 @@ func NewServer() *Server {
 	}
 }
 
-func (s *Server) RegisterRoutes(AuthController *controller.AuthController, AIController *controller.AIController) {
+func (s *Server) RegisterRoutes(AuthUseCases *in.AuthUseCase, AuthController *controller.AuthController, AIController *controller.AIController) {
+	apiRoutes := s.router.Group("/api")
+	{
+		apiRoutes.GET("/health", func(ctx *gin.Context) {
+			ctx.JSON(http.StatusOK, gin.H{"status": "healthy"})
+		})
 
-	s.router.GET("/health", func(ctx *gin.Context) {
-		ctx.JSON(http.StatusOK, gin.H{"status": "healthy"})
-	})
+		privateGroup := apiRoutes.Group("/private")
+		privateGroup.Use(middleware.AuthMiddleware(*AuthUseCases))
+		{
+		}
 
-	s.router.GET("/chat", AIController.ChatWithAI)
+		s.router.GET("/chat", AIController.ChatWithAI)
+	}
+
 }
 
 func (s *Server) RunServer(port string) error {
@@ -38,7 +49,7 @@ func (s *Server) RunServer(port string) error {
 		Addr:    ":" + port,
 		Handler: s.router,
 	}
-
+	fmt.Println("Server running on port: ", port)
 	go func() {
 		if err := s.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("listen: %s\n", err)

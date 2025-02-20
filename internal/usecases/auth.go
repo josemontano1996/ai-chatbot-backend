@@ -69,7 +69,7 @@ func (uc *AuthUseCases) Login(ctx context.Context, email, password string) (stri
 
 }
 
-func (uc *AuthUseCases) ValidateToken(ctx context.Context, token string) (*entities.AuthTokenPayload, error) {
+func (uc *AuthUseCases) ValidateToken(token string) (*entities.AuthTokenPayload, error) {
 	return uc.auth.VerifyToken(token)
 
 }
