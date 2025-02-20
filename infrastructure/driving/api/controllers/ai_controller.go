@@ -11,16 +11,16 @@ import (
 	"github.com/josemontano1996/ai-chatbot-backend/internal/dto"
 	"github.com/josemontano1996/ai-chatbot-backend/internal/entities"
 	"github.com/josemontano1996/ai-chatbot-backend/internal/ports/in"
-	"github.com/josemontano1996/ai-chatbot-backend/internal/ports/out"
+	outrepo "github.com/josemontano1996/ai-chatbot-backend/internal/ports/out/repositories"
 )
 
 type AIController struct {
 	aiChatUseCase         in.AIChatUseCase
-	chatMessageRepository out.ChatMessageRepository
+	chatMessageRepository outrepo.ChatMessageRepository
 	ws                    ws.AIChatWSClientInterface
 }
 
-func NewAIController(aiChatUseCase in.AIChatUseCase, chatMessageRespository out.ChatMessageRepository, chatWebsocket ws.AIChatWSClientInterface) *AIController {
+func NewAIController(aiChatUseCase in.AIChatUseCase, chatMessageRespository outrepo.ChatMessageRepository, chatWebsocket ws.AIChatWSClientInterface) *AIController {
 	return &AIController{
 		aiChatUseCase:         aiChatUseCase,
 		chatMessageRepository: chatMessageRespository,

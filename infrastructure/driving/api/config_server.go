@@ -24,7 +24,7 @@ func NewServer() *Server {
 	}
 }
 
-func (s *Server) RegisterRoutes(AIController *controller.AIController) {
+func (s *Server) RegisterRoutes(AuthController *controller.AuthController, AIController *controller.AIController) {
 
 	s.router.GET("/health", func(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, gin.H{"status": "healthy"})

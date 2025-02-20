@@ -11,6 +11,7 @@ type User struct {
 	Password string `json:"password"`
 }
 
+
 func NewUserDTOFromEntity(user *entities.User) (*User, error) {
 	userDTO := &User{
 		ID:    user.ID,

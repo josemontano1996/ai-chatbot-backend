@@ -2,7 +2,7 @@
 // versions:
 //   sqlc v1.28.0
 
-package postgre
+package sqlc
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 
 type Querier interface {
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	FindByEmail(ctx context.Context, email string) (User, error)
 }
 
 var _ Querier = (*Queries)(nil)

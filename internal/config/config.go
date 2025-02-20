@@ -1,6 +1,8 @@
 package config
 
 import (
+	"time"
+
 	"github.com/spf13/viper"
 )
 
@@ -18,6 +20,10 @@ type Env struct {
 	OpenAiMaxTokens uint32 `mapstructure:"OPENAI_MAX_TOKENS"`
 
 	MaxCompletionTokens uint32 `mapstructure:"MAX_COMPLETION_TOKENS"`
+
+	PostgresConnectionString string `mapstructure:"POSTGRES_CONNECTION_STRING"`
+
+	SessionDuration time.Duration `mapstructure:"SESSION_DURATION"`
 }
 
 func LoadEnv(path string, fileName string) (env Env, err error) {

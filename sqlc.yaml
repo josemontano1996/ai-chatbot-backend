@@ -1,12 +1,12 @@
 version: '2'
 sql:
   - engine: 'postgresql'
-    queries: 'infrastructure/driven/repository/postgre/query'
-    schema: 'infrastructure/driven/repository/postgre/migration'
+    queries: 'infrastructure/driven/repository/db/query'
+    schema: 'infrastructure/driven/repository/db/migration'
     gen:
       go:
-        package: "postgre"
-        out: "infrastructure/driven/repository/postgre/sqlc"
+        package: "sqlc"
+        out: "infrastructure/driven/repository/db/output"
         sql_package: "pgx/v5"
         emit_json_tags: true
         emit_interface: true

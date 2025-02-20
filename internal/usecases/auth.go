@@ -2,56 +2,78 @@ package usecases
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/josemontano1996/ai-chatbot-backend/internal/dto"
+	"github.com/josemontano1996/ai-chatbot-backend/internal/entities"
 	"github.com/josemontano1996/ai-chatbot-backend/internal/ports/in"
 	"github.com/josemontano1996/ai-chatbot-backend/internal/ports/out"
+	outrepo "github.com/josemontano1996/ai-chatbot-backend/internal/ports/out/repositories"
+	"github.com/josemontano1996/ai-chatbot-backend/pkg/utils"
 )
 
 type AuthUseCases struct {
-	pasetoService  out.PasetoService
-	userRepository out.UserRepository
+	auth           out.TokenAuthService
+	userRepository outrepo.UserRepository
+	tokenDuration  time.Duration
 }
 
-func NewAuthUseCases(ps out.PasetoService, ur out.UserRepository) in.AuthService {
+func NewAuthUseCase(ps out.TokenAuthService, ur outrepo.UserRepository, tokenDuration time.Duration) (in.AuthUseCase, error) {
+
+	if tokenDuration == 0 {
+		return nil, errors.New("token duration must be greater than 0")
+	}
+
 	return &AuthUseCases{
-		pasetoService:  ps,
+		auth:           ps,
 		userRepository: ur,
-	}
+		tokenDuration:  tokenDuration,
+	}, nil
 }
 
-func (uc *AuthUseCases) Login(ctx context.Context, email, password string) (string, error) {
-	user, err := uc.userRepository.FindByEmail(ctx, email)
+func (uc *AuthUseCases) RegisterUser(ctx context.Context, email, password string) (*dto.User, error) {
 
+	if len(password) < 8 {
+		return nil, fmt.Errorf("invalid user password, length is lower than 8 chars")
+	}
+
+	hashedPassword, err := utils.HashPassword(password, 12)
 	if err != nil {
-		return "", fmt.Errorf("login failed: %w", err)
+		return nil, err
 	}
 
-	// TODO: implement comparing password hashing
-	if user == nil || user.Password != password {
-		return "", fmt.Errorf("login failed: invalid credentials")
-	}
-
-	token, err := uc.pasetoService.GenerateToken(user.ID)
-
+	userEntity, err := uc.userRepository.CreateUser(ctx, email, hashedPassword)
 	if err != nil {
-		return "", fmt.Errorf("login failed: falided to generate token: %w", err)
+		return nil, err
 	}
 
-	return token, nil
+	return dto.NewUserDTOFromEntity(userEntity)
 }
 
-func (uc *AuthUseCases) ValidateToken(ctx context.Context, token string) (*dto.User, error) {
-	user, err := uc.pasetoService.ValidateToken(token)
+func (uc *AuthUseCases) Login(ctx context.Context, email, password string) (string, *entities.AuthTokenPayload, error) {
+	user, hashedPw, err := uc.userRepository.FindByEmail(ctx, email)
 
 	if err != nil {
-		return nil, fmt.Errorf("invalid token: %w", err)
+		return "", nil, fmt.Errorf("login failed: %w", err)
 	}
 
-	return dto.NewUserDTOFromEntity(user)
+	err = utils.CheckPassword(password, hashedPw)
+
+	if user == nil || err != nil {
+		return "", nil, fmt.Errorf("login failed: invalid credentials")
+	}
+
+	return uc.auth.GenerateToken(user.ID, uc.tokenDuration)
+
 }
 
-func (uc *AuthUseCases) GenerateToken(userId string) (string, error) {
-	return uc.pasetoService.GenerateToken(userId)
+func (uc *AuthUseCases) ValidateToken(ctx context.Context, token string) (*entities.AuthTokenPayload, error) {
+	return uc.auth.VerifyToken(token)
+
+}
+
+func (uc *AuthUseCases) GenerateToken(userId string, tokenDuration time.Duration) (string, *entities.AuthTokenPayload, error) {
+	return uc.auth.GenerateToken(userId, tokenDuration)
 }
