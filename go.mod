@@ -11,6 +11,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/jackc/pgx/v5 v5.7.2
 	github.com/redis/go-redis/v9 v9.7.0
+	github.com/rs/cors v1.11.1
 	github.com/spf13/viper v1.19.0
 	golang.org/x/crypto v0.33.0
 	google.golang.org/api v0.186.0

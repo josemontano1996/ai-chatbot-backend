@@ -24,6 +24,9 @@ type Env struct {
 	PostgresConnectionString string `mapstructure:"POSTGRES_CONNECTION_STRING"`
 
 	SessionDuration time.Duration `mapstructure:"SESSION_DURATION"`
+
+	FrontEndOrigin string `mapstructure:"FRONTEND_ORIGIN"`
+	AppEnvironment string `mapstructure:ENV:`
 }
 
 func LoadEnv(path string, fileName string) (env Env, err error) {
