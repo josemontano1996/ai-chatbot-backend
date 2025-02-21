@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -11,34 +12,65 @@ import (
 
 	"github.com/gin-gonic/gin"
 	controller "github.com/josemontano1996/ai-chatbot-backend/infrastructure/driving/api/controllers"
+	"github.com/josemontano1996/ai-chatbot-backend/infrastructure/driving/api/middleware"
+	"github.com/josemontano1996/ai-chatbot-backend/internal/config"
+	"github.com/josemontano1996/ai-chatbot-backend/internal/ports/in"
+	"github.com/rs/cors"
 )
 
 type Server struct {
 	router *gin.Engine
 	srv    *http.Server
+	env    *config.Env
 }
 
-func NewServer() *Server {
+func NewServer(env *config.Env) *Server {
 	return &Server{
 		router: gin.Default(),
+		env:    env,
 	}
 }
 
-func (s *Server) RegisterRoutes(AIController *controller.AIController) {
+func (s *Server) RegisterRoutes(authUseCases *in.AuthUseCase, authController *controller.AuthController, AIController *controller.AIController) {
+	apiRoutes := s.router.Group("/api")
+	{
+		apiRoutes.GET("/health", func(ctx *gin.Context) {
+			ctx.JSON(http.StatusOK, gin.H{"status": "healthy"})
+		})
 
-	s.router.GET("/health", func(ctx *gin.Context) {
-		ctx.JSON(http.StatusOK, gin.H{"status": "healthy"})
-	})
+		apiRoutes.POST("/register", authController.RegisterUser)
 
-	s.router.GET("/chat", AIController.ChatWithAI)
+		privateGroup := apiRoutes.Group("/private")
+		privateGroup.Use(middleware.AuthMiddleware(*authUseCases))
+		{
+		}
+		//TODO: put /chat in privarte group middeware
+		privateGroup.GET("/chat", AIController.ChatWithAI)
+	}
+
 }
 
 func (s *Server) RunServer(port string) error {
-	s.srv = &http.Server{ // Initialize the HTTP server
-		Addr:    ":" + port,
-		Handler: s.router,
+	isProd := true
+	if s.env.AppEnvironment == "dev" {
+		isProd = false
 	}
 
+	c := cors.New(cors.Options{
+		AllowedOrigins:   []string{s.env.FrontEndOrigin},
+		AllowedMethods:   []string{"POST", "GET", "OPTIONS", "PUT", "DELETE"},
+		AllowedHeaders:   []string{"Content-Type", "Authorization"},
+		AllowCredentials: true,
+		Debug:            isProd,
+	})
+
+	handler := c.Handler(s.router)
+
+	s.srv = &http.Server{ // Initialize the HTTP server
+		Addr:    ":" + port,
+		Handler: handler,
+	}
+	fmt.Println("Server running on port: ", port)
 	go func() {
 		if err := s.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("listen: %s\n", err)

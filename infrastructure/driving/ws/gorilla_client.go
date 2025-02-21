@@ -73,9 +73,10 @@ func (client *GorillaWSClient[T]) SendResposeToClient(response *WSPayload[T]) er
 	return nil
 }
 
-func (client *GorillaWSClient[T]) NewPayload(x T) *WSPayload[T] {
+func (client *GorillaWSClient[T]) NewPayload(x T, err error) *WSPayload[T] {
 	return &WSPayload[T]{
 		Payload: x,
+		Error:   err.Error(),
 	}
 }
 
@@ -87,6 +88,14 @@ func (client *GorillaWSClient[T]) Disconnect() error {
 		}
 	}
 	return nil
+}
+
+func (client *GorillaWSClient[T]) SendErrorToClient(err error) error {
+	response := &WSPayload[T]{
+		Payload: *new(T),
+		Error:   err.Error(),
+	}
+	return client.SendResposeToClient(response)
 }
 
 func (ws *GorillaWSClient[T]) upgradeConn(ctx *gin.Context) (*websocket.Conn, error) {

@@ -1,8 +1,13 @@
 package entities
 
-import "github.com/google/uuid"
-
 type User struct {
-	ID   uuid.UUID
-	Name string
+	ID    string
+	Email string
+}
+
+func NewUserEntity(id, email string) (*User, error) {
+	return &User{
+		ID:    id,
+		Email: email,
+	}, nil
 }
