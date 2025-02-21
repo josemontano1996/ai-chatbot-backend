@@ -62,6 +62,11 @@ func (client *GorillaWSClient[T]) ParseIncomingRequest() (payload *WSPayload[T],
 		return nil, fmt.Errorf("error reading JSON from WS connection: %w", err)
 	}
 
+	err = utils.ValidateStruct(payload)
+	if err != nil {
+		return nil, fmt.Errorf("invalid message format: %w", err)
+	}
+
 	return
 }
 
