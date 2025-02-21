@@ -24,7 +24,7 @@ type Server struct {
 	env    *config.Env
 }
 
-func NewServer(env *config.Env) *Server {
+func NewApiServer(env *config.Env) *Server {
 	return &Server{
 		router: gin.Default(),
 		env:    env,
@@ -39,6 +39,7 @@ func (s *Server) RegisterRoutes(authUseCases *in.AuthUseCase, authController *co
 		})
 
 		apiRoutes.POST("/register", authController.RegisterUser)
+		apiRoutes.POST("/login", authController.Login)
 
 		privateGroup := apiRoutes.Group("/private")
 		privateGroup.Use(middleware.AuthMiddleware(*authUseCases))
@@ -70,6 +71,7 @@ func (s *Server) RunServer(port string) error {
 		Addr:    ":" + port,
 		Handler: handler,
 	}
+
 	fmt.Println("Server running on port: ", port)
 	go func() {
 		if err := s.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
