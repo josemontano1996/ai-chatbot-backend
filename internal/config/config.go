@@ -26,7 +26,7 @@ type Env struct {
 	SessionDuration time.Duration `mapstructure:"SESSION_DURATION"`
 
 	FrontEndOrigin string `mapstructure:"FRONTEND_ORIGIN"`
-	AppEnvironment string `mapstructure:ENV:`
+	AppEnvironment string `mapstructure:"ENV"`
 }
 
 func LoadEnv(path string, fileName string) (env Env, err error) {
