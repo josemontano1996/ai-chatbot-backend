@@ -6,14 +6,15 @@ import (
 	"github.com/josemontano1996/ai-chatbot-backend/internal/entities"
 	"github.com/josemontano1996/ai-chatbot-backend/internal/ports/in"
 	"github.com/josemontano1996/ai-chatbot-backend/internal/ports/out"
+	outrepo "github.com/josemontano1996/ai-chatbot-backend/internal/ports/out/repositories"
 )
 
 type AIChatUseCase[T any] struct {
 	aiProvider  out.AIProvider[T]
-	messageRepo out.ChatMessageRepository
+	messageRepo outrepo.ChatMessageRepository
 }
 
-func NewAIChatUseCase[T any](aiProvider out.AIProvider[T], messageRepo out.ChatMessageRepository) in.AIChatUseCase {
+func NewAIChatUseCase[T any](aiProvider out.AIProvider[T], messageRepo outrepo.ChatMessageRepository) in.AIChatUseCase {
 	return &AIChatUseCase[T]{
 		aiProvider:  aiProvider,
 		messageRepo: messageRepo,

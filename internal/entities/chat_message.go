@@ -67,7 +67,6 @@ func isValidMessageCode(code ChatMessageCode) bool {
 }
 
 // Chat history should never contain system messages
-
 func ParseArrayToChatHistory(array []string) (*ChatHistory, error) {
 	messageHistory := make(ChatHistory, 0, len(array))
 
