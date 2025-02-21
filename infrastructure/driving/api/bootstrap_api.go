@@ -86,7 +86,7 @@ func RunRestApi() {
 	AuthController := controller.NewAuthController(AuthUseCase, userRepository)
 
 	// Create Gin Router and register routes
-	server := NewServer(&config)
+	server := NewApiServer(&config)
 	server.RegisterRoutes(&AuthUseCase, AuthController, AIController)
 
 	// Start server
