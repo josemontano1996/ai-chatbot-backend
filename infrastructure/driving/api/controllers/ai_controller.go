@@ -35,7 +35,7 @@ func (c *AIController) ChatWithAI(ctx *gin.Context) {
 	user := &entities.User{
 		ID: userID,
 	}
-
+	fmt.Println(ctx.Cookie("authorization"))
 	err := c.ws.Connect(ctx)
 
 	if err != nil {

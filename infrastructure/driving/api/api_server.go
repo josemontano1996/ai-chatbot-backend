@@ -40,13 +40,12 @@ func (s *Server) RegisterRoutes(authUseCases *in.AuthUseCase, authController *co
 
 		apiRoutes.POST("/register", authController.RegisterUser)
 		apiRoutes.POST("/login", authController.Login)
-
-		wsRoutes := apiRoutes.Group("/ws")
-		wsRoutes.GET("/chat", AIController.ChatWithAI)
-
+	
 		privateGroup := apiRoutes.Group("/private")
 		privateGroup.Use(middleware.AuthMiddleware(*authUseCases))
 		{
+			wsRoutes := privateGroup.Group("/ws")
+			wsRoutes.GET("/chat", AIController.ChatWithAI)
 		}
 
 	}
@@ -60,7 +59,7 @@ func (s *Server) RunServer(port string) error {
 	}
 
 	c := cors.New(cors.Options{
-		AllowedOrigins: []string{s.env.FrontEndOrigin, "http://localhost:4173"},
+		AllowedOrigins: []string{s.env.FrontEndOrigin, "http://localhost:4173", " http://localhost:5173"},
 		AllowedMethods: []string{"POST", "GET", "OPTIONS", "PUT", "DELETE"},
 		AllowedHeaders: []string{
 			"Content-Type",
