@@ -7,6 +7,8 @@ package sqlc
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
 const createUser = `-- name: CreateUser :one
@@ -38,6 +40,22 @@ SELECT id, email, password, created_at FROM users WHERE email = $1 LIMIT 1
 
 func (q *Queries) FindByEmail(ctx context.Context, email string) (User, error) {
 	row := q.db.QueryRow(ctx, findByEmail, email)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Password,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const findById = `-- name: FindById :one
+SELECT id, email, password, created_at FROM users WHERE id = $1 LIMIT 1
+`
+
+func (q *Queries) FindById(ctx context.Context, id uuid.UUID) (User, error) {
+	row := q.db.QueryRow(ctx, findById, id)
 	var i User
 	err := row.Scan(
 		&i.ID,

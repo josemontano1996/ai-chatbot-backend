@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	sqlc "github.com/josemontano1996/ai-chatbot-backend/infrastructure/driven/repository/db/output"
 	"github.com/josemontano1996/ai-chatbot-backend/internal/entities"
@@ -41,6 +42,18 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (userEnt
 
 	if err != nil {
 		return nil, "", fmt.Errorf("error finding user by email: %w", err)
+	}
+
+	userEntity, err = entities.NewUserEntity(user.ID.String(), user.Email)
+	hashedPassword = user.Password
+	return
+}
+
+func (r *UserRepository) FindById(ctx context.Context, id uuid.UUID) (userEntity *entities.User, hashedPassword string, err error) {
+	user, err := r.Queries.FindById(ctx, id)
+
+	if err != nil {
+		return nil, "", fmt.Errorf("error finding user by id: %w", err)
 	}
 
 	userEntity, err = entities.NewUserEntity(user.ID.String(), user.Email)

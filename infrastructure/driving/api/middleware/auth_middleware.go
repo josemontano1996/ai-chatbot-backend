@@ -6,17 +6,16 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/josemontano1996/ai-chatbot-backend/internal/entities"
+	"github.com/josemontano1996/ai-chatbot-backend/infrastructure/driven/auth"
 	"github.com/josemontano1996/ai-chatbot-backend/internal/ports/in"
 )
 
 const (
 	authorizationKey        = "authorization"
 	authorizationTypeBearer = "bearer"
-	authorizationPayloadKey = "authorization_payload"
 )
 
-func AuthMiddleware(auth in.AuthUseCase) gin.HandlerFunc {
+func AuthMiddleware(authUC in.AuthUseCase) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		authHeader := ctx.GetHeader(authorizationKey)
 
@@ -50,13 +49,13 @@ func AuthMiddleware(auth in.AuthUseCase) gin.HandlerFunc {
 			accessToken = token
 		}
 
-		payload, err := auth.ValidateToken(accessToken)
+		payload, err := authUC.ValidateToken(accessToken)
 		if err != nil {
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			return
 		}
 
-		ctx.Set(authorizationPayloadKey, payload)
+		auth.SaveUserDataInContext(ctx, payload)
 		ctx.Next()
 	}
 }
@@ -85,9 +84,4 @@ func authenticateViaCookie(cookie string) (string, error) {
 	}
 
 	return cookie, nil
-}
-
-func GetUserFromRequest(ctx *gin.Context) *entities.AuthTokenPayload {
-	payload, _ := ctx.Get(authorizationPayloadKey)
-	return payload.(*entities.AuthTokenPayload)
 }

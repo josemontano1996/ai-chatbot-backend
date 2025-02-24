@@ -31,7 +31,7 @@ func NewApiServer(env *config.Env) *Server {
 	}
 }
 
-func (s *Server) RegisterRoutes(authUseCases *in.AuthUseCase, authController *controller.AuthController, AIController *controller.AIController) {
+func (s *Server) RegisterRoutes(authUseCases *in.AuthUseCase, authController *controller.AuthController, AIController *controller.AIController, userController *controller.UserController) {
 	apiRoutes := s.router.Group("/api")
 	{
 		apiRoutes.GET("/health", func(ctx *gin.Context) {
@@ -40,10 +40,14 @@ func (s *Server) RegisterRoutes(authUseCases *in.AuthUseCase, authController *co
 
 		apiRoutes.POST("/register", authController.RegisterUser)
 		apiRoutes.POST("/login", authController.Login)
-	
+
 		privateGroup := apiRoutes.Group("/private")
+
 		privateGroup.Use(middleware.AuthMiddleware(*authUseCases))
 		{
+			userRoutes := privateGroup.Group("/user")
+			userRoutes.GET("/", userController.GetUserById)
+
 			wsRoutes := privateGroup.Group("/ws")
 			wsRoutes.GET("/chat", AIController.ChatWithAI)
 		}
