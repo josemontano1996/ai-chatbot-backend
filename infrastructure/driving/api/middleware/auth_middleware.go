@@ -10,16 +10,15 @@ import (
 	"github.com/josemontano1996/ai-chatbot-backend/internal/ports/in"
 )
 
-
 const (
-	authorizationHeaderKey  = "authorization"
+	authorizationKey        = "authorization"
 	authorizationTypeBearer = "bearer"
 	authorizationPayloadKey = "authorization_payload"
 )
 
 func AuthMiddleware(auth in.AuthUseCase) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		authozarionHeader := ctx.GetHeader(authorizationHeaderKey)
+		authozarionHeader := ctx.GetHeader(authorizationKey)
 		if len(authozarionHeader) == 0 {
 			err := errors.New("unauthorized")
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
