@@ -31,7 +31,7 @@ func NewApiServer(env *config.Env) *Server {
 	}
 }
 
-func (s *Server) RegisterRoutes(authUseCases *in.AuthUseCase, authController *controller.AuthController, AIController *controller.AIController) {
+func (s *Server) RegisterRoutes(authUseCases *in.AuthUseCase, authController *controller.AuthController, AIController *controller.AIController, userController *controller.UserController) {
 	apiRoutes := s.router.Group("/api")
 	{
 		apiRoutes.GET("/health", func(ctx *gin.Context) {
@@ -42,11 +42,16 @@ func (s *Server) RegisterRoutes(authUseCases *in.AuthUseCase, authController *co
 		apiRoutes.POST("/login", authController.Login)
 
 		privateGroup := apiRoutes.Group("/private")
+
 		privateGroup.Use(middleware.AuthMiddleware(*authUseCases))
 		{
+			userRoutes := privateGroup.Group("/user")
+			userRoutes.GET("/", userController.GetUserById)
+
+			wsRoutes := privateGroup.Group("/ws")
+			wsRoutes.GET("/chat", AIController.ChatWithAI)
 		}
-		//TODO: put /chat in privarte group middeware
-		privateGroup.GET("/chat", AIController.ChatWithAI)
+
 	}
 
 }
@@ -58,9 +63,18 @@ func (s *Server) RunServer(port string) error {
 	}
 
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{s.env.FrontEndOrigin},
-		AllowedMethods:   []string{"POST", "GET", "OPTIONS", "PUT", "DELETE"},
-		AllowedHeaders:   []string{"Content-Type", "Authorization"},
+		AllowedOrigins: []string{s.env.FrontEndOrigin, "http://localhost:4173", " http://localhost:5173"},
+		AllowedMethods: []string{"POST", "GET", "OPTIONS", "PUT", "DELETE"},
+		AllowedHeaders: []string{
+			"Content-Type",
+			"Authorization",
+			"Upgrade",                  //  MUST include "Upgrade" for WebSocket
+			"Connection",               //  MUST include "Connection" for WebSocket
+			"Sec-WebSocket-Key",        //  MUST include "Sec-WebSocket-Key" for WebSocket
+			"Sec-WebSocket-Version",    //  MUST include "Sec-WebSocket-Version" for WebSocket
+			"Origin",                   //  Good practice to include, often needed
+			"Sec-WebSocket-Extensions", // Include if you are using WebSocket extensions (like permessage-deflate)
+		},
 		AllowCredentials: true,
 		Debug:            isProd,
 	})

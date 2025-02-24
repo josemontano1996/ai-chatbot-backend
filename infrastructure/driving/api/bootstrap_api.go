@@ -76,6 +76,7 @@ func RunRestApi() {
 	// Domain layer setup
 	AIChatUseCase := usecases.NewAIChatUseCase(geminiProvider, redisRepo)
 	AuthUseCase, err := usecases.NewAuthUseCase(pasetoAuthService, userRepository, config.SessionDuration)
+	UserUseCase := usecases.NewUserUseCase(userRepository)
 
 	if err != nil {
 		log.Fatalf("error in auth use case: %v", err)
@@ -84,10 +85,11 @@ func RunRestApi() {
 	// Interface/Presenter layer setup
 	AIController := controller.NewAIController(AIChatUseCase, redisRepo, AIWSChatClient)
 	AuthController := controller.NewAuthController(AuthUseCase, userRepository)
+	UserController := controller.NewUserController(UserUseCase, userRepository)
 
 	// Create Gin Router and register routes
 	server := NewApiServer(&config)
-	server.RegisterRoutes(&AuthUseCase, AuthController, AIController)
+	server.RegisterRoutes(&AuthUseCase, AuthController, AIController, UserController)
 
 	// Start server
 	err = server.RunServer(config.ServerPort)

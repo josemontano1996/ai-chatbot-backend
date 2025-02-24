@@ -2,6 +2,7 @@ package chatws
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/gin-gonic/gin"
 	"github.com/josemontano1996/ai-chatbot-backend/infrastructure/driving/ws"
@@ -29,7 +30,7 @@ func (c *AIChatWSClient) ReadChatMessage() (*dto.ChatMessageDTO, error) {
 	payloadWrapper, err := c.client.ParseIncomingRequest()
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse incoming request: %w", err)
 	}
 
 	chatMessagePayload := payloadWrapper.Payload
@@ -44,7 +45,6 @@ func (c *AIChatWSClient) SendChatMessage(message *dto.ChatMessageDTO) error {
 	payload := c.client.NewPayload(*message, nil)
 	return c.client.SendResposeToClient(payload)
 }
-
 
 func (c *AIChatWSClient) Connect(ctx *gin.Context) error {
 	return c.client.Connect(ctx)
