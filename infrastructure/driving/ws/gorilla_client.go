@@ -2,7 +2,6 @@ package ws
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
@@ -34,32 +33,47 @@ func (ws *GorillaWSClient[T]) Connect(ctx *gin.Context) error {
 	}
 
 	conn.SetPingHandler(func(string) error {
-		err := conn.WriteControl(websocket.PongMessage, []byte{}, time.Now().Add(ws.Config.ExpirationTime))
-		if err == websocket.ErrCloseSent {
-			return err
-		} else if err != nil {
-			log.Println("Error sending pong:", err)
-			return err
+		err := conn.WriteControl(
+			websocket.PongMessage,
+			[]byte{},
+			time.Now().Add(10*time.Second),
+		)
+		return err
+	})
+
+	go func() {
+		ticker := time.NewTicker(5 * time.Second)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			if err := conn.WriteControl(
+				websocket.PingMessage,
+				[]byte{},
+				time.Now().Add(10*time.Second),
+			); err != nil {
+				return
+			}
 		}
-		return nil
-	})
 
-	conn.SetPongHandler(func(string) error {
-		return nil
-	})
-
-	conn.SetWriteDeadline(time.Now().Add(ws.Config.ExpirationTime))
-	conn.SetReadDeadline(time.Now().Add(ws.Config.ExpirationTime / 2))
+	}()
 
 	ws.Conn = conn
 	return nil
 }
 
 func (client *GorillaWSClient[T]) ParseIncomingRequest() (payload *WSPayload[T], err error) {
+	fmt.Println("parsing request", payload)
 	err = client.Conn.ReadJSON(&payload)
 
 	if err != nil {
-		return nil, fmt.Errorf("error reading JSON from WS connection: %w", err)
+		// Handle closure errors
+		if websocket.IsUnexpectedCloseError(err,
+			websocket.CloseNormalClosure,
+			websocket.CloseGoingAway,
+			websocket.CloseAbnormalClosure) {
+			return nil, fmt.Errorf("websocket connection closed: %w", err)
+		}
+		return nil, fmt.Errorf("error reading JSON: %w", err)
 	}
 
 	err = utils.ValidateStruct(payload)
@@ -79,10 +93,16 @@ func (client *GorillaWSClient[T]) SendResposeToClient(response *WSPayload[T]) er
 }
 
 func (client *GorillaWSClient[T]) NewPayload(x T, err error) *WSPayload[T] {
+	if err != nil {
+		return &WSPayload[T]{
+			Payload: x,
+			Error:   err.Error(),
+		}
+	}
 	return &WSPayload[T]{
 		Payload: x,
-		Error:   err.Error(),
 	}
+
 }
 
 func (client *GorillaWSClient[T]) Disconnect() error {

@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -34,7 +35,7 @@ func (c *AIController) ChatWithAI(ctx *gin.Context) {
 	user := &entities.User{
 		ID: userID,
 	}
-
+	fmt.Println(ctx.Cookie("authorization"))
 	err := c.ws.Connect(ctx)
 
 	if err != nil {
@@ -43,19 +44,26 @@ func (c *AIController) ChatWithAI(ctx *gin.Context) {
 		return
 	}
 
+	fmt.Println("connected to ws")
 	defer c.ws.Disconnect()
 
 	for {
+		fmt.Println("listening for messages")
 		userMessagePayload, err := c.ws.ReadChatMessage()
+		fmt.Println("message received", userMessagePayload)
 
 		if err != nil {
-			if websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseNormalClosure, websocket.CloseNoStatusReceived) {
-				log.Println("WebSocket closed by client or server:", err)
+			if websocket.IsCloseError(err,
+				websocket.CloseNormalClosure,
+				websocket.CloseGoingAway,
+				websocket.CloseAbnormalClosure) {
+				log.Println("Client disconnected")
 				break
 			}
 
-			c.ws.SendErrorToClient(err) // Log unexpected errors
-			continue
+			log.Printf("Read error: %v", err)
+			c.ws.SendErrorToClient(err)
+			break // Exit loop on fatal errors
 		}
 
 		aiResponse, err := c.aiChatUseCase.SendChatMessage(ctx, user.ID, userMessagePayload.Message)
@@ -66,7 +74,6 @@ func (c *AIController) ChatWithAI(ctx *gin.Context) {
 		}
 		log.Println("AI response received:", aiResponse.ChatMessage.Message)
 		chatMessageDTO, err := dto.ChatMessageEntityToDTO(aiResponse.ChatMessage)
-
 		if err != nil {
 			c.ws.SendErrorToClient(err)
 		} else {

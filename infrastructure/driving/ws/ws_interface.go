@@ -9,7 +9,7 @@ import (
 )
 
 type WSPayload[T any] struct {
-	Payload T      `json:"payload" validate:"required"`
+	Payload T      `json:"payload"`
 	Error   string `json:"error"`
 }
 
