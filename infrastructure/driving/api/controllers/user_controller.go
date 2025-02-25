@@ -46,3 +46,46 @@ func (c *UserController) GetUserById(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, sendSuccessPayload(userDto))
 }
+
+type updateUserReq struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+func (c *UserController) UpdateUser(ctx *gin.Context) {
+	userId, err := auth.GetUserIdFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, sendErrorPayload(err))
+		return
+	}
+	var updateData updateUserReq
+	err = ctx.ShouldBindJSON(&updateData)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, sendErrorPayload(err))
+		return
+	}
+
+	_, err = c.userUseCase.UpdateUser(ctx, userId, updateData.Email, updateData.Password)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, sendErrorPayload(err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{})
+}
+
+func (c *UserController) DeleteUser(ctx *gin.Context) {
+	userId, err := auth.GetUserIdFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, sendErrorPayload(err))
+		return
+	}
+
+	err = c.userUseCase.DeleteUser(ctx, userId)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, sendErrorPayload(err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{})
+}

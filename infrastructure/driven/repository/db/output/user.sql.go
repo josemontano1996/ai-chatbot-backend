@@ -34,6 +34,15 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
+const deleteUser = `-- name: DeleteUser :exec
+DELETE FROM users WHERE id = $1
+`
+
+func (q *Queries) DeleteUser(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteUser, id)
+	return err
+}
+
 const findByEmail = `-- name: FindByEmail :one
 SELECT id, email, password, created_at FROM users WHERE email = $1 LIMIT 1
 `
@@ -56,6 +65,33 @@ SELECT id, email, password, created_at FROM users WHERE id = $1 LIMIT 1
 
 func (q *Queries) FindById(ctx context.Context, id uuid.UUID) (User, error) {
 	row := q.db.QueryRow(ctx, findById, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Password,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const updateUser = `-- name: UpdateUser :one
+UPDATE users 
+SET
+email = COALESCE(NULLIF($1, ''), email),
+password = COALESCE(NULLIF($2, ''), password)
+WHERE id = $3
+RETURNING id, email, password, created_at
+`
+
+type UpdateUserParams struct {
+	NewEmail    interface{} `json:"new_email"`
+	NewPassword interface{} `json:"new_password"`
+	ID          uuid.UUID   `json:"id"`
+}
+
+func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUser, arg.NewEmail, arg.NewPassword, arg.ID)
 	var i User
 	err := row.Scan(
 		&i.ID,
