@@ -46,8 +46,8 @@ func (s *Server) RegisterRoutes(authUseCases *in.AuthUseCase, authController *co
 		privateGroup.Use(middleware.AuthMiddleware(*authUseCases))
 		{
 			userRoutes := privateGroup.Group("/user")
-			userRoutes.GET("/", userController.GetUserById)
-			userRoutes.POST("/update", userController.UpdateUser)
+			userRoutes.GET("", userController.GetUserById)
+			userRoutes.PUT("", userController.UpdateUser)
 			userRoutes.DELETE("/delete", userController.DeleteUser)
 
 			wsRoutes := privateGroup.Group("/ws")

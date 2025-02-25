@@ -58,9 +58,8 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, sendErrorPayload(err))
 		return
 	}
-
 	var updateData updateUserReq
-	err = ctx.ShouldBindJSON(&userId)
+	err = ctx.ShouldBindJSON(&updateData)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, sendErrorPayload(err))
 		return
