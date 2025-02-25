@@ -65,3 +65,30 @@ func (q *Queries) FindById(ctx context.Context, id uuid.UUID) (User, error) {
 	)
 	return i, err
 }
+
+const updateUser = `-- name: UpdateUser :one
+UPDATE users 
+SET
+email = COALESCE(NULLIF($1, ''), email),
+password = COALESCE(NULLIF($2, ''), password)
+WHERE id = $3
+RETURNING id, email, password, created_at
+`
+
+type UpdateUserParams struct {
+	NewEmail    interface{} `json:"new_email"`
+	NewPassword interface{} `json:"new_password"`
+	ID          uuid.UUID   `json:"id"`
+}
+
+func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUser, arg.NewEmail, arg.NewPassword, arg.ID)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Password,
+		&i.CreatedAt,
+	)
+	return i, err
+}

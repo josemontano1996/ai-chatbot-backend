@@ -60,3 +60,17 @@ func (r *UserRepository) FindById(ctx context.Context, id uuid.UUID) (userEntity
 	hashedPassword = user.Password
 	return
 }
+
+func (r *UserRepository) UpdateUser(ctx context.Context, id uuid.UUID, new_email, new_hashed_password string) (*entities.User, error) {
+	params := sqlc.UpdateUserParams{
+		ID:          id,
+		NewEmail:    new_email,
+		NewPassword: new_hashed_password,
+	}
+	updatedUser, err := r.Queries.UpdateUser(ctx, params)
+	if err != nil {
+		return nil, fmt.Errorf("error updating user: %w", err)
+	}
+
+	return entities.NewUserEntity(updatedUser.ID.String(), updatedUser.Email)
+}
