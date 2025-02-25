@@ -48,7 +48,7 @@ func (c *AuthController) RegisterUser(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, sendSuccessPayload(""))
+	ctx.JSON(http.StatusOK, gin.H{})
 }
 
 type loginRequest struct {

@@ -12,4 +12,5 @@ type UserRepository interface {
 	FindByEmail(ctx context.Context, email string) (userEntity *entities.User, password string, err error)
 	FindById(ctx context.Context, id uuid.UUID) (userEntity *entities.User, password string, err error)
 	UpdateUser(ctx context.Context, id uuid.UUID, new_email, new_password string) (*entities.User, error)
+	DeleteUser(ctx context.Context, id uuid.UUID) error
 }

@@ -74,3 +74,7 @@ func (r *UserRepository) UpdateUser(ctx context.Context, id uuid.UUID, new_email
 
 	return entities.NewUserEntity(updatedUser.ID.String(), updatedUser.Email)
 }
+
+func (r *UserRepository) DeleteUser(ctx context.Context, id uuid.UUID) error {
+	return r.Queries.DeleteUser(ctx, id)
+}

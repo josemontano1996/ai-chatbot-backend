@@ -72,5 +72,21 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, sendSuccessPayload(""))
+	ctx.JSON(http.StatusOK, gin.H{})
+}
+
+func (c *UserController) DeleteUser(ctx *gin.Context) {
+	userId, err := auth.GetUserIdFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, sendErrorPayload(err))
+		return
+	}
+
+	err = c.userUseCase.DeleteUser(ctx, userId)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, sendErrorPayload(err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{})
 }

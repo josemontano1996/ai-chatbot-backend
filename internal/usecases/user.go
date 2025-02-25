@@ -52,3 +52,7 @@ func (uc *UserUseCase) UpdateUser(ctx context.Context, id uuid.UUID, new_email, 
 
 	return dto.NewUserDTOFromEntity(userEntity)
 }
+
+func (uc *UserUseCase) DeleteUser(ctx context.Context, id uuid.UUID) error {
+	return uc.userRepo.DeleteUser(ctx, id)
+}

@@ -48,6 +48,7 @@ func (s *Server) RegisterRoutes(authUseCases *in.AuthUseCase, authController *co
 			userRoutes := privateGroup.Group("/user")
 			userRoutes.GET("/", userController.GetUserById)
 			userRoutes.POST("/update", userController.UpdateUser)
+			userRoutes.DELETE("/delete", userController.DeleteUser)
 
 			wsRoutes := privateGroup.Group("/ws")
 			wsRoutes.GET("/chat", AIController.ChatWithAI)

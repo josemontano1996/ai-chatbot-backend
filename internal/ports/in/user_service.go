@@ -10,4 +10,5 @@ import (
 type UserUseCase interface {
 	GetUserById(ctx context.Context, id uuid.UUID) (*dto.User, error)
 	UpdateUser(ctx context.Context, id uuid.UUID, new_email, new_password string) (*dto.User, error)
+	DeleteUser(ctx context.Context, id uuid.UUID) error
 }

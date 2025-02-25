@@ -17,3 +17,6 @@ email = COALESCE(NULLIF(sqlc.narg(new_email), ''), email),
 password = COALESCE(NULLIF(sqlc.narg(new_password), ''), password)
 WHERE id = sqlc.arg(id)
 RETURNING *;
+
+-- name: DeleteUser :exec
+DELETE FROM users WHERE id = $1;
