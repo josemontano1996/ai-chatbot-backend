@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	Gemini15FlashModelName string = "gemini-1.5-flash"
+	Gemini15FlashModelName string = "gemini-2.0-flash"
 	GeminiTextOutput       string = "text"
 	geminiUserRole         string = "user"
 	geminiSystemRole       string = "system"

@@ -3,6 +3,7 @@ package entities
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 )
 
 type ChatMessageCode int8
@@ -58,12 +59,7 @@ func NewSystemMessage(message string) (*ChatMessage, error) {
 }
 
 func isValidMessageCode(code ChatMessageCode) bool {
-	for _, allowedCode := range AllowedChatMessageCodes {
-		if code == allowedCode {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(AllowedChatMessageCodes, code)
 }
 
 // Chat history should never contain system messages
